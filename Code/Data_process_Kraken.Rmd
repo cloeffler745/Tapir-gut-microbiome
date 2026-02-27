@@ -1,0 +1,325 @@
+# Boiler Plate
+
+```{r}
+library(readxl)
+library(dplyr)
+#library(ggplot2)
+#library(reshape2)
+#library(stringr)
+library(tibble)
+library(vegan)
+```
+
+# Functions
+
+```{r}
+`%notin%` <- function (x, y) {!(x %in% y)}
+```
+
+# Load data sets
+
+## Process metadata
+
+```{r}
+# When the data was gross, process it, set new variables, and isolate the important ones
+# metadata <- read_excel(path = "../Metadata_clean.xlsx", 
+#                        sheet = 2, 
+#                        col_types = c(rep("guess", 7), "date", rep("guess", 12))) %>%
+#   filter(Fastq_name %notin% c("79_S70","86_S76", "88_S106")) %>% 
+#   as.data.frame()
+#          # Drop sample 79_S70 which did not have enough reads for analysis
+#          # Also drop sample 86_S76 whose ID is unknown
+# metadata$Group[metadata$Group == "Captive"] = "Ex-situ"
+# metadata$Specific_Group[metadata$Specific_Group == "Captive"] = "Ex-situ"
+# 
+# # Create column in metadata that is "days since first sample"
+# metadata <- metadata %>% 
+#   mutate(Date_collected = as.Date(Date_collected)) %>%
+#   group_by(Zoo) %>%
+#   arrange(Zoo, Date_collected) %>%  # ensure sorted within group
+#   mutate(
+#     BaselineDate = first(Date_collected),             # the earliest date in each group
+#     DaysSinceBaseline = as.numeric(Date_collected - BaselineDate)  # difference in days
+#   ) %>%
+#   mutate(
+#     # find total span per Zoo
+#     TotalDays = max(DaysSinceBaseline, na.rm = TRUE),
+#     Progression = DaysSinceBaseline / TotalDays
+#   ) %>%
+#   ungroup() %>% 
+#   select(Fastq_name, Sample_ID, Animal_Name, Date_collected, Sex, Group, Specific_Group, Zoo, Tapir, Progression, Storage_reagent, `QC read count (Millions)`) %>%
+#   as.data.frame()
+
+# Now that the data has been cleaned and processed and ordered, load in the clean dataset
+metadata <- read.delim(file = "../Metadata_processed.tsv", check.names = FALSE) %>% 
+  mutate(Sample_ID = paste(Animal_Code, Time_Point, sep = "_")) %>%
+  mutate(Date_collected = as.Date(Date_collected, format = "%m/%d/%Y"))
+
+row.names(metadata) <- metadata$Fastq_name
+```
+
+## Get the lineage table
+
+```{r}
+lineage_table <- read.delim(file = "../Data/Lineage_table.tsv", 
+                            header = TRUE, sep = "\t")
+```
+
+## Get Kraken 130 my custom DB, Domain, Phylum, Genus, Species (Species is Bracken)
+
+```{r}
+# # Domain
+# # Need to make the Viruses row
+# temp <- read.delim(file = "../Data/domain_abundance_table_130.tsv", 
+#                    sep = "\t", 
+#                    header = TRUE, 
+#                    check.names = FALSE) %>% 
+#   filter(str_detect(row.names(.), "(viria)|([vV]irus)|(satellites)", 
+#                     negate = TRUE))
+# 
+# kraken_130_domain <- read.delim(file = "../Data/domain_abundance_table_130.tsv", 
+#                          sep = "\t", 
+#                          header = TRUE, 
+#                          check.names = FALSE) %>% 
+#   filter(str_detect(row.names(.),"(viria)|([vV]irus)|(satellites)")) %>% 
+#   summarise_all(sum) %>% 
+#   `rownames<-`(c("Viruses")) %>% 
+#   rbind(temp, .) %>% 
+#   select(-"86_S76") # Remove unlabled sample
+# 
+# rm(temp)
+# 
+# 
+# # Phylum
+kraken_130_phylum <- read.delim(file = "../Data/CombinedTableAllSamples_Bracken_Phyla.tsv", 
+                                check.names = FALSE) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rownames(.) %notin% c("88_S106", "86_S76"))
+# 
+# 
+# # Genus
+# kraken_130_genus <- read.delim(file = "../Data/genus_abundance_table_130.tsv",
+#                                  sep = "\t", 
+#                                  header = TRUE, 
+#                                  check.names = FALSE) %>% 
+#   t() %>% 
+#   as.data.frame() %>% 
+#   select(-unclassified, -Mapped_to_upper_taxons) %>% 
+#   filter(row.names(.) != "86_S76") # Remove unlabled sample
+
+
+# Species, which must be treated special
+kraken_130_species <- read.delim(file = "../Data/CombinedTableAllSamples_Bracken.tsv", #species_abundance_table_130
+                                 sep = "\t", 
+                                 header = TRUE, 
+                                 check.names = FALSE, 
+                                 row.names = 1) %>% 
+  select(-"86_S76", -"88_S106") %>% # Remove unlabled sample
+  t() %>% 
+  as.data.frame()
+```
+
+## Split abundance table into Bacteria, Archaea, and Fungi and rarefy
+
+```{r}
+abund_bac <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+
+abund_arch <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+
+abund_fun <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+
+abund_plant <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"]))
+
+abund_virus <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"]))
+```
+
+## Perform rarefaction
+
+For bacteria
+
+```{r}
+# Get the min library depth
+raremax <- min(rowSums(abund_bac))
+# Perform rarefaction
+set.seed(1025)
+abund_spec_bac_rare <- rrarefy(abund_bac,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_spec_bac_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+For Archaea
+
+```{r}
+# Get the min library depth
+raremax <- min(rowSums(abund_arch))
+# Perform rarefaction
+set.seed(1025)
+abund_spec_arch_rare <- rrarefy(abund_arch,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_spec_arch_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+For Fungi
+
+```{r}
+# Get the min library depth
+raremax <- min(rowSums(abund_fun))
+# Perform rarefaction
+set.seed(1025)
+abund_spec_fun_rare <- rrarefy(abund_fun,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_spec_fun_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+For plants
+
+```{r}
+# Get the min library depth
+raremax <- min(rowSums(abund_plant))
+# Perform rarefaction
+set.seed(1025)
+abund_spec_plant_rare <- rrarefy(abund_plant,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_spec_plant_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+For viruses
+
+```{r}
+# Get the min library depth
+raremax <- min(rowSums(abund_virus))
+# Perform rarefaction
+set.seed(1025)
+abund_spec_virus_rare <- rrarefy(abund_virus,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_spec_virus_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+
+#### Make the isolated domain abundance tables (Species)
+
+```{r}
+# FULL abundance matrices by domain
+abund_spec_bac <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+
+abund_spec_fun <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+
+abund_spec_arch <- kraken_130_species %>%
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+
+# RAREFIED abundance matrices by domain
+# abund_spec_bac_rare <- data_abund_rare %>% 
+#   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+# 
+# abund_spec_fun_rare <- data_abund_rare %>% 
+#   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+# 
+# abund_spec_arch_rare <- data_abund_rare %>%
+#   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+```
+
+Now let's make sure that the metadata and the database have the samples listed in the same order
+
+```{r}
+# Check if the samples are ordered already
+identical(rownames(kraken_130_species), rownames(metadata)) 
+identical(rownames(abund_spec_bac), rownames(metadata))
+identical(rownames(abund_spec_bac_rare), rownames(metadata))
+identical(rownames(abund_spec_fun), rownames(metadata))
+identical(rownames(abund_spec_fun_rare), rownames(metadata))
+identical(rownames(abund_spec_arch), rownames(metadata))
+identical(rownames(abund_spec_arch_rare), rownames(metadata))
+identical(rownames(kraken_130_phylum), rownames(metadata))
+
+# If they are not ordered, order them
+# metadata <- metadata %>% 
+#   mutate(Fastq_name = factor(Fastq_name, levels = c(rownames(kraken_130_species)))) %>% 
+#   group_by(Fastq_name) %>% 
+#   arrange(Fastq_name) %>% 
+#   as.data.frame()
+# rownames(metadata) <- metadata$Fastq_name
+# 
+# identical(rownames(kraken_130_species), rownames(metadata)) #TRUE
+# identical(rownames(kraken_130_phylum), rownames(metadata)) #TRUE
+
+# Save the metadata table, now that it has what we need and lists samples in the correct order
+#write.table(metadata, file = "../Metadata_processed.tsv", sep = "\t", )
+```
+
+## Now I want an abundance table with nicer sample names
+
+```{r}
+# Grab the data
+data_graph <- kraken_130_phylum
+
+# Check that the metadata and data frame rows (samples) are in the same order
+identical(rownames(data_graph), metadata$Fastq_name) # TRUE
+
+# Combine the metadata$Sample_ID with the abundance table
+data_graph <- cbind(metadata$Sample_ID, data_graph) %>% 
+  rename(X = "metadata$Sample_ID")
+rownames(data_graph) <- NULL
+data_graph <- data_graph %>% 
+  column_to_rownames(var = "X") %>%
+  t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column( var = "X") %>% 
+  as.data.frame()
+
+# Now I only have to grab once
+# write.table(data_graph, file = "../Data/CombinedTableAllSamples_Bracken_Phyla_Sample_ID.tsv",
+#             quote = FALSE, row.names = FALSE, sep = "\t")
+```
