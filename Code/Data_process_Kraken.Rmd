@@ -115,7 +115,7 @@ kraken_130_species <- read.delim(file = "../Data/CombinedTableAllSamples_Bracken
                                  header = TRUE, 
                                  check.names = FALSE, 
                                  row.names = 1) %>% 
-  select(-"86_S76", -"88_S106") %>% # Remove unlabled sample
+  select(-"86_S76", -"88_S106") %>% # Remove unlabled sample and possibly contaminated wild sample
   t() %>% 
   as.data.frame()
 ```
@@ -136,6 +136,30 @@ abund_plant <- kraken_130_species %>%
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"]))
 
 abund_virus <- kraken_130_species %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"]))
+```
+
+## Rarefaction groups for Mountain tapirs only
+
+```{r}
+abund_bac <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+
+abund_arch <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+
+abund_fun <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+
+abund_plant <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"]))
+
+abund_virus <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"]))
 ```
 
@@ -245,7 +269,6 @@ abund_spec_virus_rare %>%
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
 ```
-
 
 #### Make the isolated domain abundance tables (Species)
 
