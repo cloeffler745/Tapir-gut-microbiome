@@ -71,7 +71,7 @@ identical(rownames(abund_arch), rownames(metadata))
 abund_fun <- kraken_130_species %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
 # Check order of samples against metadata
-identical(rownames(abund__fun), rownames(metadata))
+identical(rownames(abund_fun), rownames(metadata))
 
 abund_plant <- kraken_130_species %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"]))
@@ -312,8 +312,4 @@ Check that the order of samples in the data frame and the metadata are in the sa
 identical(rownames(abund_spec_bac_rare_dcs), rownames(metadata_dcs))
 identical(rownames(abund_spec_fun_rare_dcs), rownames(metadata_dcs))
 identical(rownames(abund_spec_arch_rare_dcs), rownames(metadata_dcs))
-identical(rownames(abund_spec_virus_rare_dcs), rownames(metadata_dcs))
-identical(rownames(abund_spec_plant_rare_dcs), rownames(metadata_dcs))
 ```
-
-
