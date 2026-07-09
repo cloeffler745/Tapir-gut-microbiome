@@ -61,7 +61,7 @@ ggplot(metadata_mt, aes(x = Animal_Code, y = simpson_arch)) +
   facet_wrap(~Specific_Group, scales = "free_x")
 ```
 
-Let's see how much variation is between individual versus within
+Let's see how much variation is between groups versus within individual variation
 
 ```{r}
 library(dplyr)
