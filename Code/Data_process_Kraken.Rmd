@@ -7,12 +7,6 @@ library(tibble)
 library(vegan)
 ```
 
-# Functions
-
-```{r}
-`%notin%` <- function (x, y) {!(x %in% y)}
-```
-
 # Load data sets
 
 ## Process metadata

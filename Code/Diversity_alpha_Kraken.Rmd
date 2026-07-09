@@ -18,300 +18,140 @@ library(patchwork)
 library(lubridate)
 ```
 
-# Functions
-
-```{r}
-`%notin%` <- function (x, y) {!(x %in% y)}
-```
-
-### Species
-
-```{r}
-# Returns a data frame with only specific samples based on metadata values
-select_samples <- function(data, metadata, group = "", values = c()) {
-  hold <- metadata$Fastq_name[metadata[[group]] %in% values]
-  data_subset <- data %>% 
-    t() %>% 
-    as.data.frame() %>%
-    select(any_of(hold)) %>% 
-    t() %>% 
-    as.data.frame()
-  
-  return(data_subset)
-}
-```
-
 # Set-up input and calculate Shannon diversity
 
-Select input data frame and calculate Shannon diversity (store in metadata variable).
-
 ```{r}
-# Grab the proper data frame to do everything beyond this point
-# This way if I chnage the data frame I am using I only need to rewrite 
-# 1 line of code
-# data_Div <- kraken_130_species
-# 
-# # Calculate shannon diversity
-# metadata$shannon <- NA
-# a_div <- diversity(data_Div, index = "shannon")
-# 
-# # Metadata and abundance data rows are NOT in the same order, thus I need to match each diversity value with
-# # the correct corresponding row in metadata. Otherwise is asigned incorrectly.
-# for (i in names(a_div)) {
-#   metadata[metadata$Fastq_name == as.character(i),"shannon"] <- a_div[as.character(i)]
-# }
-# rm(a_div)
+# Calculate diversity and richness for the three domains in mountain tapirs
+metadata_mt$shannon_bac <- diversity(abund_spec_bac_rare_mt, index = "shannon")
+metadata_mt$simpson_bac <- diversity(abund_spec_bac_rare_mt, index = "simpson")
+metadata_mt$rich_bac <- specnumber(abund_spec_bac_rare_mt)
+
+metadata_mt$shannon_arch <- diversity(abund_spec_arch_rare_mt, index = "shannon")
+metadata_mt$simpson_arch <- diversity(abund_spec_arch_rare_mt, index = "simpson")
+metadata_mt$rich_arch <- specnumber(abund_spec_arch_rare_mt)
+
+metadata_mt$shannon_fun <- diversity(abund_spec_fun_rare_mt, index = "shannon")
+metadata_mt$simpson_fun <- diversity(abund_spec_fun_rare_mt, index = "simpson")
+metadata_mt$rich_fun <- specnumber(abund_spec_fun_rare_mt)
 
 
-# Calculate diversity and richness for the three domains
-metadata$shannon_bac <- diversity(abund_spec_bac, index = "shannon")
-metadata$simpson_bac <- diversity(abund_spec_bac, index = "simpson")
-metadata$rich_bac <- specnumber(abund_spec_bac)
+# Calculate diversity and richness for the three domains in dam-calf-sire samples
+metadata_dcs$shannon_bac <- diversity(abund_spec_bac_rare_dcs, index = "shannon")
+metadata_dcs$simpson_bac <- diversity(abund_spec_bac_rare_dcs, index = "simpson")
+metadata_dcs$rich_bac <- specnumber(abund_spec_bac_rare_dcs)
 
-metadata$shannon_arch <- diversity(abund_spec_arch, index = "shannon")
-metadata$simpson_arch <- diversity(abund_spec_arch, index = "simpson")
-metadata$rich_arch <- specnumber(abund_spec_arch)
+metadata_dcs$shannon_arch <- diversity(abund_spec_arch_rare_dcs, index = "shannon")
+metadata_dcs$simpson_arch <- diversity(abund_spec_arch_rare_dcs, index = "simpson")
+metadata_dcs$rich_arch <- specnumber(abund_spec_arch_rare_dcs)
 
-metadata$shannon_fun <- diversity(abund_spec_fun, index = "shannon")
-metadata$simpson_fun <- diversity(abund_spec_fun, index = "simpson")
-metadata$rich_fun <- specnumber(abund_spec_fun)
+metadata_dcs$shannon_fun <- diversity(abund_spec_fun_rare_dcs, index = "shannon")
+metadata_dcs$simpson_fun <- diversity(abund_spec_fun_rare_dcs, index = "simpson")
+metadata_dcs$rich_fun <- specnumber(abund_spec_fun_rare_dcs)
 
 ```
 
-Rarefaction for each of archaea, bacteria, fungi
+# Moutain tapir Wild v. *Ex-situ* alpha diversity assessment
+
+I am trying to determine whether to use the aggregate method for ex-situ samples and then apply a wilcox test (easiest). or if I should go through the trouble of figuring out a bootstrapped LMM. Are ex-situ samples variable enough to make it worth it?
 
 ```{r}
-# # Find the minimum library size (the sample with the fewest reads)
-# raremax <- min(rowSums(abund_spec_bac))
-# # Rarify the data (this takes a minute)
-# set.seed(1025)
-# abund_spec_bac_rare <- rrarefy(abund_spec_bac, raremax) %>% 
-#   as.data.frame()
-# 
-# # Find the minimum library size (the sample with the fewest reads)
-# raremax <- min(rowSums(abund_spec_arch))
-# # Rarify the data (this takes a minute)
-# set.seed(1025)
-# abund_spec_arch_rare <- rrarefy(abund_spec_arch, raremax) %>% 
-#   as.data.frame
-# 
-# # Find the minimum library size (the sample with the fewest reads)
-# raremax <- min(rowSums(abund_spec_fun))
-# # Rarify the data (this takes a minute)
-# set.seed(1025)
-# abund_spec_fun_rare <- rrarefy(abund_spec_fun, raremax) %>% 
-#   as.data.frame()
-# 
-# # Check this didn't ruin the row names and order
-# identical(rownames(abund_spec_bac_rare), rownames(metadata))
-# identical(rownames(abund_spec_fun_rare), rownames(metadata))
-# identical(rownames(abund_spec_arch_rare), rownames(metadata))
-
-# Once again double check that the smaples are in the same order, otherwise everything will be mismatched ALL TRUE
-identical(rownames(metadata), rownames(abund_spec_bac_rare))
-identical(rownames(metadata), rownames(abund_spec_arch_rare))
-identical(rownames(metadata), rownames(abund_spec_fun_rare))
-identical(rownames(metadata), rownames(abund_spec_virus_rare))
-
-# identical(rownames(metadata), rownames(abund_spec_bac))
-# identical(rownames(metadata), rownames(abund_spec_arch))
-# identical(rownames(metadata), rownames(abund_spec_fun))
-
-#metadata <- metadata %>% filter(Tapir == "Mountain") # For testing the new rarified abundances
-
-# Calculate diversity on rareified data
-metadata$shannon_bac <- diversity(abund_spec_bac_rare, index = "shannon")
-metadata$simpson_bac <- diversity(abund_spec_bac_rare, index = "simpson")
-metadata$rich_bac <- specnumber(abund_spec_bac_rare)
-# metadata$bac_OG <- specnumber(abund_spec_bac)
-
-metadata$shannon_arch <- diversity(abund_spec_arch_rare, index = "shannon")
-metadata$simpson_arch <- diversity(abund_spec_arch_rare, index = "simpson")
-metadata$rich_arch <- specnumber(abund_spec_arch_rare)
-# metadata$arch_OG <- specnumber(abund_spec_arch)
-
-metadata$shannon_fun <- diversity(abund_spec_fun_rare, index = "shannon")
-metadata$simpson_fun <- diversity(abund_spec_fun_rare, index = "simpson")
-metadata$rich_fun <- specnumber(abund_spec_fun_rare)
-# metadata$fun_OG <- specnumber(abund_spec_fun)
-
-metadata$shannon_virus <- diversity(abund_spec_virus_rare, index = "shannon")
-metadata$simpson_virus <- diversity(abund_spec_virus_rare, index = "simpson")
-metadata$rich_virus <- specnumber(abund_spec_virus_rare)
-# metadata$fun_OG <- specnumber(abund_spec_fun)
+ggplot(metadata_mt, aes(x = Animal_Code, y = simpson_arch)) +
+  geom_point() +
+  stat_summary(fun = median, geom = "point", color = "red", size = 3) +
+  facet_wrap(~Specific_Group, scales = "free_x")
 ```
 
-# Captive v. Wild
-
-## Use all mountain tapir samples and account for replicates
+Let's see how much variation is between individual versus within
 
 ```{r}
-# Grab the data
-meta_test <- metadata %>% 
-  filter(Specific_Group %in% c("Wild","Ex-situ")) %>% 
-  mutate(Specific_Group = factor(.$Specific_Group, levels = c("Wild", "Ex-situ")))
+library(dplyr)
+
+# Within-animal noise (Group A only)
+within_summary <- metadata_mt %>%
+  filter(Specific_Group == "Ex-situ") %>%
+  group_by(Animal_Code) %>%
+  summarise(within_sd = sd(rich_bac))
+
+mean_within_sd <- mean(within_summary$within_sd)
+
+# The actual effect you're testing: difference between group medians
+group_medians <- metadata_mt %>%
+  group_by(Specific_Group) %>%
+  summarise(median_shannon = median(rich_bac))
+
+group_diff <- diff(range(group_medians$median_shannon))
+
+cat("Average within-animal SD:", mean_within_sd, "\n")
+cat("Difference between group medians:", group_diff, "\n")
+cat("Ratio (within-animal noise / group difference):", mean_within_sd / group_diff, "\n")
+
+# rich_bac = 0.5609413
+# Shannon_bac = 2.794944
+# simpson_bac = 29.82773
+
+# rich_arch = 0.6421049
+# shannon_arch = 0.4117306
+# simpson_arch = 0.8717713
+
+# rich_fun = 1.402629
+# shannon_fun = 0.4630361
+# simpson_fun = 0.3462595
+```
 
 ## Bacteria
-print("Bacteria ================================================================================")
-# Make the Sattertwaite method
-lmm_model_bac_rich_rare <- lmer(rich_bac ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_rich_rare <- lmer(rich_bac ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_rich_rare, lmm_model_bac_rich_rare) # To get AIC
 
-# Make the Sattertwaite method
-lmm_model_bac_shan_rare <- lmer(shannon_bac ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_shan_rare <- lmer(shannon_bac ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_shan_rare, lmm_model_bac_shan_rare) # To get AIC
-
-# Make the Sattertwaite method
-lmm_model_bac_simp_rare <- lmer(simpson_bac ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_simp_rare <- lmer(simpson_bac ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_simp_rare, lmm_model_bac_simp_rare) # To get AIC
-
-print("Archaea ================================================================================")
-## Archaea
-# Make the Sattertwaite method
-lmm_model_arch_rich_rare <- lmer(rich_arch ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_rich_rare <- lmer(rich_arch ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_rich_rare, lmm_model_arch_rich_rare) # To get AIC
-
-# Make the Sattertwaite method
-lmm_model_arch_shan_rare <- lmer(shannon_arch ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_shan_rare <- lmer(shannon_arch ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_shan_rare, lmm_model_arch_shan_rare) # To get AIC
-
-# Make the Sattertwaite method
-lmm_model_arch_simp_rare <- lmer(simpson_arch ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_simp_rare <- lmer(simpson_arch ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_simp_rare, lmm_model_arch_simp_rare) # To get AIC
-
-print("Fungi ================================================================================")
-## Fungi
-# Make the Sattertwaite method
-lmm_model_fun_rich_rare <- lmer(rich_fun ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_shan_rare <- lmer(rich_fun ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_rich_rare, lmm_model_fun_rich_rare) # To get AIC
-
-# Make the Sattertwaite method
-lmm_model_fun_shan_rare <- lmer(shannon_fun ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_shan_rare <- lmer(shannon_fun ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_shan_rare, lmm_model_fun_shan_rare) # To get AIC
-
-# Make the Sattertwaite method
-lmm_model_fun_simp_rare <- lmer(simpson_fun ~ Specific_Group + (1|Animal_Code),
-                          data = meta_test)
-# Get the p-value using the anova() method aliReza showed me
-lmm_model_absent_simp_rare <- lmer(simpson_fun ~ 1 + (1|Animal_Code),
-                         data = meta_test)
-print("p-value by ANOVA comparison of two LMM models")
-anova(lmm_model_absent_simp_rare, lmm_model_fun_simp_rare) # To get AIC
-```
-
-## Set up specific input data and Test statistical assumptions (OG analysis)
+### Set up the variables, run the Wilcox test, and make the plots 
 
 ```{r}
-meta_test <- metadata %>% 
-  filter(Specific_Group %in% c("Wild","Ex-situ")) %>% 
-  group_by(Animal_Code) %>% 
-  arrange(Date_collected, .by_group = TRUE) %>% 
-  slice(1) %>% 
-  ungroup() %>% 
-  mutate(Specific_Group = factor(.$Specific_Group, levels = c("Wild", "Ex-situ")))
+# Richness
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(rich_bac), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-# # Test of normality via Shapiro-Wilks test FAILED 
-# shapiro.test(meta_test$shannon) # p-value = 0.0225
-# 
-# # Visualize normality
-# qqnorm(meta_test$shannon) 
-# qqline(meta_test$shannon)
-# text(qqnorm(meta_test$shannon, plot.it = FALSE), 
-#      labels = meta_test$Fastq_name, 
-#      pos = 4, cex = 0.7)
-# ggdensity(meta_test$shannon)
-# 
-# # Test of Homoskedasticity via levene test PASS 
-# with(meta_test, leveneTest(shannon, Specific_Group)) # p = 0.9664
-```
-
-check the sampling depth now that I have rarefied. Compare to un-rarefied richness.
-
-```{r}
-ggplot(data = meta_test, aes(x = `QC read count (Millions)`, y = rich_bac, color = Group)) + 
-  geom_point()
-ggplot(data = meta_test, aes(x = `QC read count (Millions)`, y = bac_OG, color = Group)) + 
-  geom_point()
-
-ggplot(data = meta_test, aes(x = `QC read count (Millions)`, y = rich_fun, color = Group)) + 
-  geom_point()
-ggplot(data = meta_test, aes(x = `QC read count (Millions)`, y = fun_OG, color = Group)) + 
-  geom_point()
-
-ggplot(data = meta_test, aes(x = `QC read count (Millions)`, y = rich_arch, color = Group)) + 
-  geom_point()
-ggplot(data = meta_test, aes(x = `QC read count (Millions)`, y = arch_OG, color = Group)) + 
-  geom_point()
-```
-
-## Run Wilcox test and create box plot
-
-bacteria
-
-```{r}
-# # Testing normality of all the values
-# shapiro.test(meta_test$shannon_bac) # PASS
-# shapiro.test(meta_test$simpson_bac) # FAIL
-# shapiro.test(meta_test$rich_bac) # PASS
-# 
-# # Testing homoskedasticity of all the values
-# library(car)
-# with(meta_test, leveneTest(shannon_bac, Specific_Group)) # PASS
-# with(meta_test, leveneTest(simpson_bac, Specific_Group)) # PASS 
-# with(meta_test, leveneTest(rich_bac, Specific_Group)) # PASS
-# 
-# # T-test for those values that passed both tests
-# t.test(shannon_bac ~ Specific_Group, data = meta_test) # p-value = 0.6614
-# t.test(rich_bac ~ Specific_Group, data = meta_test) # p-value = 0.0266
-
-# Wilcox test (the non-parametric version of the independent t test)
-wilcox.test(shannon_bac ~ Specific_Group, data = meta_test) # p-value = 0.9452
-wilcox.test(simpson_bac ~ Specific_Group, data = meta_test) # p-value = 1
-wilcox.test(rich_bac ~ Specific_Group, data = meta_test) # p-value = 0.05128
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
 
 # Create box plot
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_bac, 
+p1 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
+           fill = Specific_Group)) + 
+  geom_boxplot() + 
+  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
+  theme_bw() + 
+  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+                    breaks = c("Wild", "Ex-situ"),
+                    labels = c(
+                      "Wild" = "Wild",
+                      "Ex-situ" = expression(italic("Ex-situ"))
+                    )) + 
+  theme(
+    title = element_text(size = 16),
+    axis.title = element_text(size = 16), 
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 14),
+    axis.text.x = element_blank(),
+    legend.title = element_text(size = 15), 
+    legend.text = element_text(size = 13), 
+    legend.position = "none",
+    plot.title = element_markdown()
+  ) + 
+  labs(title = "Richness", x = "Group") + 
+  ylab("Richness")
+p1
+
+
+# Shannon
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(shannon_bac), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
+# Create box plot
+p2 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
@@ -335,17 +175,29 @@ p1 <- ggplot(data = meta_test,
   ) + 
   labs(title = "Shannon", x = "Group") + 
   ylab("Shannon")
-p1
+p2
 
+# Shannon
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(simpson_bac), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
 # Create box plot
-p3 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = simpson_bac, 
+p3 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
-  theme_bw() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
+  theme_bw() + 
   scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
+                    breaks = c("Wild", "Ex-situ"),
+                    labels = c(
+                      "Wild" = "Wild",
+                      "Ex-situ" = expression(italic("Ex-situ"))
+                    )) + 
   theme(
     title = element_text(size = 16),
     axis.title = element_text(size = 16), 
@@ -355,118 +207,92 @@ p3 <- ggplot(data = meta_test,
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "none",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
   labs(title = "Simpson", x = "Group") + 
   ylab("Simpson")
 p3
+```
 
-# Create box plot
-p2 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = rich_bac, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
-p2
+### Make and save the big plot
 
-(p2 | p1 | p3) + plot_annotation(tag_levels = "A", 
+```{r}
+(p1 | p2 | p3) + plot_annotation(tag_levels = "A", 
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
         plot.title= element_markdown()) 
 
 
-# # (p-value = 0.7308) old for allDiv
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_bac_species_rare.pdf", 
-#        width=6, 
-#        height=3.4)
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_bac_species_rare.tiff", 
-#        width=6, 
-#        height=3.4)
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_bac_species_rare.png", 
-#        width=6, 
-#        height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.pdf",
+       width=6,
+       height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.tiff",
+       width=6,
+       height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.png",
+       width=6,
+       height=3.4)
 ```
 
-bacteria for presentation
+## Archaea
+
+### Set up the variables, run the Wilcox test, and make the plots 
 
 ```{r}
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_bac, 
+# Richness
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(rich_arch), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
+
+# Create box plot
+p1 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
+  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+                    breaks = c("Wild", "Ex-situ"),
+                    labels = c(
+                      "Wild" = "Wild",
+                      "Ex-situ" = expression(italic("Ex-situ"))
+                    )) + 
   theme(
-    title = element_text(size = 14),
+    title = element_text(size = 16),
     axis.title = element_text(size = 16), 
     axis.title.x = element_blank(),
     axis.text = element_text(size = 14),
-    # axis.text.x = element_blank(),
+    axis.text.x = element_blank(),
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "none",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
-  labs(title = "p = 0.94", x = "Group") + 
-  ylab("Shannon")
+  labs(title = "Richness", x = "Group") + 
+  ylab("Richness")
 p1
 
-ggsave( file = "../Images/Presentation/Alpha_Bac_Shannon.png", 
-        units = "in",
-        height = 2.97,
-        width = 2.3)
-```
 
-Archaea
+# Shannon
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(shannon_arch), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-```{r}
-# # Testing normality of all the values
-# shapiro.test(meta_test$shannon_arch) # PASS
-# shapiro.test(meta_test$simpson_arch) # FAIL
-# shapiro.test(meta_test$rich_arch) # PASS
-# 
-# # Testing homoskedasticity of all the values
-# library(car)
-# with(meta_test, leveneTest(shannon_arch, Specific_Group)) # PASS
-# with(meta_test, leveneTest(simpson_arch, Specific_Group)) # PASS 
-# with(meta_test, leveneTest(rich_arch, Specific_Group)) # PASS
-# 
-# # T-test for those values that passed both tests
-# t.test(shannon_arch ~ Specific_Group, data = meta_test) # p-value = 0.05253
-# t.test(rich_arch ~ Specific_Group, data = meta_test) # p-value = 0.0002824
-# 
-
-# Wilcox test (the non-parametric version of the independent t test)
-wilcox.test(shannon_arch ~ Specific_Group, data = meta_test) # p-value = 0.05128
-wilcox.test(simpson_arch ~ Specific_Group, data = meta_test) # p-value = 0.02214
-wilcox.test(rich_arch ~ Specific_Group, data = meta_test) # p-value = 0.001166
-
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
 # Create box plot
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_arch, 
+p2 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
+  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  geom_jitter(width = 0.2, size = 1, color = "black") + 
   scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
@@ -482,21 +308,33 @@ p1 <- ggplot(data = meta_test,
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "bottom",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
   labs(title = "Shannon", x = "Group") + 
   ylab("Shannon")
-p1
+p2
 
+# Shannon
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(simpson_arch), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
 # Create box plot
-p3 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = simpson_arch, 
+p3 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
+  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  geom_jitter(width = 0.2, size = 1, color = "black") + 
   scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
+                    breaks = c("Wild", "Ex-situ"),
+                    labels = c(
+                      "Wild" = "Wild",
+                      "Ex-situ" = expression(italic("Ex-situ"))
+                    )) + 
   theme(
     title = element_text(size = 16),
     axis.title = element_text(size = 16), 
@@ -506,117 +344,93 @@ p3 <- ggplot(data = meta_test,
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "none",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
   labs(title = "Simpson", x = "Group") + 
   ylab("Simpson")
 p3
+```
 
-# Create box plot
-p2 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = rich_arch, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  geom_jitter(width = 0.2, size = 1, color = "black") + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
-p2
+### Make and save the big plot
 
-(p2 | p1 | p3) + plot_annotation(tag_levels = "A", 
+```{r}
+(p1 | p2 | p3) + plot_annotation(tag_levels = "A", 
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
         plot.title= element_markdown()) 
 
-# Save the images
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_arch_species_rare.pdf", 
-#        width=6, 
-#        height=3.4)
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_arch_species_rare.tiff", 
-#        width=6, 
-#        height=3.4)
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_arch_species_rare.png", 
-#        width=6, 
-#        height=3.4)
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.pdf",
+       width=6,
+       height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.tiff",
+       width=6,
+       height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.png",
+       width=6,
+       height=3.4)
 ```
 
-Archaea for presentation
+## Fungi
+
+### Set up the variables, run the Wilcox test, and make the plots 
 
 ```{r}
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_arch, 
+# Richness
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(rich_fun), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
+
+# Create box plot
+p1 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
+  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+                    breaks = c("Wild", "Ex-situ"),
+                    labels = c(
+                      "Wild" = "Wild",
+                      "Ex-situ" = expression(italic("Ex-situ"))
+                    )) + 
   theme(
-    title = element_text(size = 14),
+    title = element_text(size = 16),
     axis.title = element_text(size = 16), 
     axis.title.x = element_blank(),
     axis.text = element_text(size = 14),
-    # axis.text.x = element_blank(),
+    axis.text.x = element_blank(),
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "none",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
-  labs(title = "p = 0.051", x = "Group") + 
-  ylab("Shannon")
+  labs(title = "Richness", x = "Group") + 
+  ylab("Richness")
 p1
 
-ggsave( file = "../Images/Presentation/Alpha_Arch_Shannon.png", 
-        units = "in",
-        height = 2.97,
-        width = 2.3)
-```
 
-Fungi
+# Shannon
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(shannon_fun), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-```{r}
-# # Testing normality of all the values
-# shapiro.test(meta_test$shannon_fun) # FAIL
-# shapiro.test(meta_test$simpson_fun) # FAIL
-# shapiro.test(meta_test$rich_fun) # PASS
-# 
-# # Testing homoskedasticity of all the values
-# library(car)
-# with(meta_test, leveneTest(shannon_fun, Specific_Group)) # FAIL
-# with(meta_test, leveneTest(simpson_fun, Specific_Group)) # FAIL 
-# with(meta_test, leveneTest(rich_fun, Specific_Group)) # PASS
-# 
-# # T-test for those values that passed both tests
-# t.test(rich_fun ~ Specific_Group, data = meta_test) # p-value = 0.8134
-
-# Wilcox test (the non-parametric version of the independent t test)
-wilcox.test(shannon_fun ~ Specific_Group, data = meta_test) # p-value = 0.2949
-wilcox.test(simpson_fun ~ Specific_Group, data = meta_test) # p-value = 0.4452
-wilcox.test(rich_fun ~ Specific_Group, data = meta_test) # p-value = 0.7059
-
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
 # Create box plot
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_fun, 
+p2 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
+  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  geom_jitter(width = 0.2, size = 1, color = "black") + 
-  scale_fill_manual(name = "Group", 
-                    values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -631,21 +445,33 @@ p1 <- ggplot(data = meta_test,
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "bottom",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
   labs(title = "Shannon", x = "Group") + 
   ylab("Shannon")
-p1
+p2
 
+# Shannon
+agg_data <- metadata_mt %>%
+  group_by(Animal_Code, Specific_Group) %>%
+  summarise(median = median(simpson_fun), .groups = "drop") %>% 
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+
+wilcox.test(median ~ Specific_Group, 
+            data = agg_data)
 # Create box plot
-p3 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = simpson_fun, 
+p3 <- ggplot(data = agg_data, 
+       aes(x = Specific_Group, y = median, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
+  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  geom_jitter(width = 0.2, size = 1, color = "black") + 
   scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
+                    breaks = c("Wild", "Ex-situ"),
+                    labels = c(
+                      "Wild" = "Wild",
+                      "Ex-situ" = expression(italic("Ex-situ"))
+                    )) + 
   theme(
     title = element_text(size = 16),
     axis.title = element_text(size = 16), 
@@ -655,196 +481,39 @@ p3 <- ggplot(data = meta_test,
     legend.title = element_text(size = 15), 
     legend.text = element_text(size = 13), 
     legend.position = "none",
-    plot.title= element_markdown()
+    plot.title = element_markdown()
   ) + 
   labs(title = "Simpson", x = "Group") + 
   ylab("Simpson")
 p3
+```
 
-# Create box plot
-p2 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = rich_fun, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  geom_jitter(width = 0.2, size = 1, color = "black") + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
-p2
+### Make and save the big plot
 
-(p2 | p1 | p3) + plot_annotation(tag_levels = "A", 
+```{r}
+(p1 | p2 | p3) + plot_annotation(tag_levels = "A", 
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
         plot.title= element_markdown()) 
 
-# Save the images
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_fun_species_rare.pdf", 
-#        width=7.5, 
-#        height=4.25)
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_fun_species_rare.tiff", 
-#        width=7.5, 
-#        height=4.25)
-# ggsave(file = "../Images/Manuscript (Frontiers)/alpha_fun_species_rare.png", 
-#        width=7.5, 
-#        height=4.25)
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.pdf",
+       width=6,
+       height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.tiff",
+       width=6,
+       height=3.4)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.png",
+       width=6,
+       height=3.4)
 ```
 
-Fungi for presentation
+# *Ex-situ* Mt. Tapir alpha diversity over time
+
+Plot function for mountain tapirs
 
 ```{r}
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_fun, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "", values = c("#99FF33", "#A6A6A6"),
-                    breaks = c("Wild", "Ex-situ")) + 
-  theme(
-    title = element_text(size = 14),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    # axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "p = 0.051", x = "Group") + 
-  ylab("Shannon")
-p1
-
-ggsave( file = "../Images/Presentation/Alpha_fun_Shannon.png", 
-        units = "in",
-        height = 2.97,
-        width = 2.3)
-```
-
-Virus
-
-```{r}
-# # Testing normality of all the values
-# shapiro.test(meta_test$shannon_bac) # PASS
-# shapiro.test(meta_test$simpson_bac) # FAIL
-# shapiro.test(meta_test$rich_bac) # PASS
-# 
-# # Testing homoskedasticity of all the values
-# library(car)
-# with(meta_test, leveneTest(shannon_bac, Specific_Group)) # PASS
-# with(meta_test, leveneTest(simpson_bac, Specific_Group)) # PASS 
-# with(meta_test, leveneTest(rich_bac, Specific_Group)) # PASS
-# 
-# # T-test for those values that passed both tests
-# t.test(shannon_bac ~ Specific_Group, data = meta_test) # p-value = 0.6614
-# t.test(rich_bac ~ Specific_Group, data = meta_test) # p-value = 0.0266
-
-# Wilcox test (the non-parametric version of the independent t test)
-wilcox.test(shannon_virus ~ Specific_Group, data = meta_test) # 
-wilcox.test(simpson_virus ~ Specific_Group, data = meta_test) # 
-wilcox.test(rich_virus ~ Specific_Group, data = meta_test) # 
-
-# Create box plot
-p1 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = shannon_virus, 
-           color = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_color_manual(name = "Group", values = c("orange1", "blue4")) + 
-  theme(
-    title = element_text(size = 18),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "bottom",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "Shannon", x = "Group") + 
-  ylab("Shannon")
-p1
-
-# Create box plot
-p3 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = simpson_virus, 
-           color = Specific_Group)) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  scale_color_manual(name = "Group", values = c("orange1", "blue4")) + 
-  theme(
-    title = element_text(size = 18),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "Simpson", x = "Group") + 
-  ylab("Simpson")
-p3
-
-# Create box plot
-p2 <- ggplot(data = meta_test, 
-       aes(x = Specific_Group, y = rich_virus, 
-           color = Specific_Group)) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  scale_color_manual(name = "Group", values = c("orange1", "blue4")) + 
-  theme(
-    title = element_text(size = 18),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title= element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
-p2
-
-(p2 | p1 | p3) + plot_annotation(tag_levels = "a", 
-                             title = "Wild v. *ex-situ* mt. tapirs (Virus)") & 
-  theme(plot.tag = element_text(size = 25, face = "bold"),
-        plot.tag.position = c(0.02, 1.02), 
-        plot.title= element_markdown()) 
-```
-
-# Ex-situ Mt. Tapir alpha diversity over time
-
-The original code for this is located in Specialty_Figures.rmd
-
-```{r}
-# Select the data for the ex-situ mountain tapirs
-meta_long <- metadata %>% 
-  filter(Specific_Group == "Ex-situ") %>% 
-  mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
-  mutate(months_since_start = (time_length(interval(min(Date_collected), Date_collected), unit = "months") + 1))
-
 # Plot function for mountain tapirs
 plot_mt <- function (data, variable) {
   ggplot(data = data, 
@@ -873,12 +542,20 @@ plot_mt <- function (data, variable) {
         legend.text = element_text(size = 13), 
         legend.key.width = unit(2, "cm")) 
 }
+```
+
+```{r}
+# Select the data for the ex-situ mountain tapirs
+meta_long <- metadata_mt %>% 
+  filter(Specific_Group == "Ex-situ") %>% 
+  mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
+  mutate(months_since_start = (time_length(interval(min(Date_collected), Date_collected), unit = "months") + 1))
 
 
 # Richness
 # bacteria 
 p1 <- plot_mt(data = meta_long, variable = "rich_bac") + 
-  ylim(11125,12125) + 
+  ylim(11700,12400) + 
   ylab("Species Richness") + 
   xlab("") + 
   ggtitle("Bacteria") 
@@ -886,7 +563,7 @@ p1
 
 # archaea
 p2 <- plot_mt(data = meta_long, variable = "rich_arch") + 
-  ylim(50,400) +
+  ylim(350,500) +
   ylab("") + 
   xlab("") + 
   ggtitle("Archaea") 
@@ -957,20 +634,20 @@ p9
         plot.title= element_markdown()) 
 
 
-# # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/Mountain_alpha_9.tiff", 
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/Mountain_alpha_9.png", 
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
+# Save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.tiff",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
 
-# The panel we are actually going to use
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.png",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
+
+# The 3 panel figure
 ((p4 + ggtitle("Bacteria")) | (p5 + ggtitle("Archaea") + xlab("Date")) | (p6 + ggtitle("Fungi")) ) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
@@ -982,26 +659,22 @@ p9
         panel.grid.minor = element_blank())
 
 # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/Mountain_alpha_3_shannon.tiff", 
-#        width = 14,
-#        height = 5,
-#        units = "in")
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/Mountain_alpha_3_shannon.png", 
-#        width = 14,
-#        height = 5,
-#        units = "in")
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.tiff",
+       width = 14,
+       height = 5,
+       units = "in")
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.png",
+       width = 14,
+       height = 5,
+       units = "in")
 ```
 
 # Malayan tapir calf-dam over time
 
-```{r}
-# Select the data for the ex-situ mountain tapirs
-meta_long <- metadata %>% 
-  filter(Tapir == "Malayan") %>% 
-  mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
-  mutate(months_since_start = time_length(interval(min(Date_collected), Date_collected), "months")  + 0.76)
+Plot function for Malayan tapirs.
 
+```{r}
 # Plot function
 plot_Mal <- function (data, variable) {
   ggplot(data = data, 
@@ -1032,6 +705,14 @@ plot_Mal <- function (data, variable) {
         legend.text = element_text(size = 13), 
         legend.key.width = unit(2, "cm"))
 }
+```
+
+```{r}
+# Select the data for the ex-situ mountain tapirs
+meta_long <- metadata_dcs %>% 
+  filter(Tapir == "Malayan") %>% 
+  mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
+  mutate(months_since_start = time_length(interval(min(Date_collected), Date_collected), "months")  + 0.76)
 
 plot_Mal(data = meta_long, variable = "shannon_bac")
 
@@ -1118,13 +799,13 @@ p9
 
 
 # Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/Malayan_alpha_9.tiff", 
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.tiff", 
        width = 1725,
        height = 894,
        units = "px",
        dpi = 96.14)
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Malayan_alpha_9.png", 
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.png", 
        width = 1725,
        height = 894,
        units = "px",
@@ -1140,12 +821,12 @@ ggsave(file = "../Images/Manuscript (Frontiers)/Malayan_alpha_9.png",
         plot.title= element_markdown()) 
 
 # Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/Malayan_alpha_3_shannon.tiff", 
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.tiff", 
        width = 14,
        height = 5,
        units = "in")
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Malayan_alpha_3_shannon.png", 
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.png", 
        width = 14,
        height = 5,
        units = "in")
@@ -1153,13 +834,9 @@ ggsave(file = "../Images/Manuscript (Frontiers)/Malayan_alpha_3_shannon.png",
 
 # Lowland tapir calf -dam over time
 
-```{r}
-# Select the data for the ex-situ mountain tapirs
-meta_long <- metadata %>% 
-  filter(Tapir == "Lowland") %>% 
-  mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
-  mutate(months_since_start = time_length(interval(min(Date_collected), Date_collected), "months") + 1)
+Plot function for lowland tapirs
 
+```{r}
 # Plot function
 plot_Low <- function (data, variable) {
   ggplot(data = data, 
@@ -1186,8 +863,18 @@ plot_Low <- function (data, variable) {
         axis.title = element_text(size = 18),
         axis.text = element_text(size = 15),
         legend.text = element_text(size = 13), 
-        legend.key.width = unit(2, "cm"))
+        legend.key.width = unit(2, "cm")) + 
+    xlim(0,5)
 }
+
+```
+
+```{r}
+# Select the data for the ex-situ mountain tapirs
+meta_long <- metadata_dcs %>% 
+  filter(Tapir == "Lowland") %>% 
+  mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
+  mutate(months_since_start = time_length(interval(min(Date_collected), Date_collected), "months") + 0.613)
 
 
 # Richness
@@ -1269,17 +956,17 @@ p9
 
 # Save the plots
 
-# ggsave(file = "../Images/Manuscript (Frontiers)/Lowland_alpha_9.tiff", 
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/Lowland_alpha_9.png", 
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.tiff",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.png",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
 
 
 # The panel we are actually going to use
@@ -1292,15 +979,13 @@ p9
         plot.title= element_markdown()) 
 
 # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/Lowland_alpha_3_shannon.tiff", 
-#        width = 14,
-#        height = 5,
-#        units = "in")
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/Lowland_alpha_3_shannon.png", 
-#        width = 14,
-#        height = 5,
-#        units = "in")
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.tiff",
+       width = 14,
+       height = 5,
+       units = "in")
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.png",
+       width = 14,
+       height = 5,
+       units = "in")
 ```
-
-
