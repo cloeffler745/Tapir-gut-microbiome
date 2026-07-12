@@ -158,8 +158,8 @@ Maaslin2(abund_arch_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Archaea/all_results.tsv",
-             "../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Archaea",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Archaea/all_results.tsv",
+             "../Data/Maaslin2_outs_rare/No rare select/MountainWvC/Archaea",
              "Archaea_only", Plot_title = "Wild v. *ex-situ* (Archaea)",
              chosen = c("Methanoculleus.bourgensis","Methanofollis.aquaemaris","Methanofollis.liminatans",
                         "Methanolobus.zinderi","Methanoregula.boonei",
@@ -172,7 +172,7 @@ volcano_plot("../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Archaea/all_results.
 # "Methanosarcina.sp..WH1", "Methanobrevibacter.sp..AbM4", "Methanobrevibacter.sp..YE315", "Methanolobus.sp..WCC4"
 
 # For presentation
-volcano_plot("../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Archaea/all_results.tsv",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Archaea/all_results.tsv",
              "../Images/Marcos",
              "Volc_Archaea", Plot_title = "Wild v. *ex-situ* (Archaea)",
              chosen = c("Methanogenium.sp..S4BF","Methanoculleus.bourgensis",
@@ -203,8 +203,8 @@ Maaslin2(abund_fun_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Fungi/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Fungi",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Fungi/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select/Fungi",
              "Fungi_only")
 ```
 
@@ -229,8 +229,8 @@ Maaslin2(abund_virus_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Viruses/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Viruses",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Viruses/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select/Viruses",
              "Viruses_only", chosen = c("Kratosvirus.quantuckense","Brigitvirus.brigit","Eponavirus.epona"))
 ```
 
@@ -255,7 +255,7 @@ Maaslin2(abund_plant_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Plants/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/Marcos/MountainWvC/Plants",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Plants/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select/Plants",
              "Plants_only")
 ```
