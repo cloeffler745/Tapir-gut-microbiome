@@ -14,12 +14,23 @@ library(vegan)
 ```{r}
 metadata <- read_excel(path = "../metadata_clean_deindentified.xlsx",
                        sheet = 1, 
-                       col_types = c(rep("guess",2), "date", rep("guess", 7)))
+                       col_types = c(rep("guess",2), "date", rep("guess", 7))) %>%
+  as.data.frame() # Because maaslin2 is specific about data frames
 row.names(metadata) <- metadata$Fastq_name
 
 # Separate the metadata for mountain tapirs and the dam-calf-sire pairs
 metadata_mt <- metadata %>%
   filter(Tapir == "Mountain")
+# Select first samples from each individual
+metadata_mt_select <- metadata %>% 
+  filter(rownames(.) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23", "33_S25", 
+                            "35_S27", "37_S29", "48_S40", "49_S41", "6_S3",
+                            "87_S105", "9_S4")) 
+# Select only ex-situ mountain tapirs
+metadata_mt_exsitu <- metadata_mt %>% 
+  filter(Group == "Ex-situ")
+
+# Grab the dam-calf-sire pairs
 metadata_dcs <- metadata %>% 
   filter(Tapir != "Mountain")
 ```
@@ -48,51 +59,25 @@ kraken_130_species <- read.delim(file = "../Data/CombinedTableAllSamples_Bracken
 identical(rownames(kraken_130_species), rownames(metadata)) 
 ```
 
-## Split abundance table into higher taxa and check order of samples
+# Perform rarefaction of each higher taxa for the two mountain tapir analyses
 
-```{r}
-
-abund_bac <- kraken_130_species %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
-# Check order of samples against metadata
-identical(rownames(abund_bac), rownames(metadata))
-
-abund_arch <- kraken_130_species %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
-# Check order of samples against metadata
-identical(rownames(abund_arch), rownames(metadata))
-
-abund_fun <- kraken_130_species %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
-# Check order of samples against metadata
-identical(rownames(abund_fun), rownames(metadata))
-
-abund_plant <- kraken_130_species %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"]))
-# Check order of samples against metadata
-identical(rownames(abund_plant), rownames(metadata))
-
-abund_virus <- kraken_130_species %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"]))
-# Check order of samples against metadata
-identical(rownames(abund_virus), rownames(metadata))
-```
-
-# Perform rarefaction of each higher taxa for mountain tapirs only
+## Wild v. *Ex-situ* (only first samples taken are used)
 
 For bacteria
 
 ```{r}
 # Isolate bacterial read data for the mountain tapir samples
-abund_bac_mt <- kraken_130_species %>% 
-  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+abund_bac_mt_select <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
+                                             "33_S25", "35_S27", "37_S29", "48_S40",
+                                             "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
 
 # Get the min library depth
-raremax <- min(rowSums(abund_bac_mt))
+raremax <- min(rowSums(abund_bac_mt_select))
 # Perform rarefaction
 set.seed(1025)
-abund_spec_bac_rare_mt <- rrarefy(abund_bac_mt,raremax) %>%
+abund_bac_mt_select_rare <- rrarefy(abund_bac_mt_select,raremax) %>%
   t() %>% 
   as.data.frame() %>% 
   filter(rowSums(across(everything())) > 0) %>%
@@ -100,7 +85,7 @@ abund_spec_bac_rare_mt <- rrarefy(abund_bac_mt,raremax) %>%
   as.data.frame()
   
 # Check that this worked-- YES
-abund_spec_bac_rare_mt %>% 
+abund_bac_mt_select_rare %>% 
   t() %>% 
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
@@ -110,15 +95,17 @@ For Archaea
 
 ```{r}
 # Isolate archaeal read data for the mountain tapir samples
-abund_arch_mt <- kraken_130_species %>% 
-  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+abund_arch_mt_select <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
+                                             "33_S25", "35_S27", "37_S29", "48_S40",
+                                             "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
 
 # Get the min library depth
-raremax <- min(rowSums(abund_arch_mt))
+raremax <- min(rowSums(abund_arch_mt_select))
 # Perform rarefaction
 set.seed(1025)
-abund_spec_arch_rare_mt <- rrarefy(abund_arch_mt,raremax) %>%
+abund_arch_mt_select_rare <- rrarefy(abund_arch_mt_select,raremax) %>%
   t() %>% 
   as.data.frame() %>% 
   filter(rowSums(across(everything())) > 0) %>%
@@ -126,7 +113,7 @@ abund_spec_arch_rare_mt <- rrarefy(abund_arch_mt,raremax) %>%
   as.data.frame()
   
 # Check that this worked-- YES
-abund_spec_arch_rare_mt %>% 
+abund_arch_mt_select_rare %>% 
   t() %>% 
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
@@ -136,15 +123,17 @@ For Fungi
 
 ```{r}
 # Isolate fungal read data for the mountain tapir samples
-abund_fun_mt <- kraken_130_species %>% 
-  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
+abund_fun_mt_select <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
+                                             "33_S25", "35_S27", "37_S29", "48_S40",
+                                             "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
 
 # Get the min library depth
-raremax <- min(rowSums(abund_fun_mt))
+raremax <- min(rowSums(abund_fun_mt_select))
 # Perform rarefaction
 set.seed(1025)
-abund_spec_fun_rare_mt <- rrarefy(abund_fun_mt,raremax) %>%
+abund_fun_mt_select_rare <- rrarefy(abund_fun_mt_select,raremax) %>%
   t() %>% 
   as.data.frame() %>% 
   filter(rowSums(across(everything())) > 0) %>%
@@ -152,59 +141,7 @@ abund_spec_fun_rare_mt <- rrarefy(abund_fun_mt,raremax) %>%
   as.data.frame()
   
 # Check that this worked-- YES
-abund_spec_fun_rare_mt %>% 
-  t() %>% 
-  as.data.frame() %>% 
-  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
-```
-
-For plants
-
-```{r}
-# Isolate plant read data for the mountain tapir samples
-abund_plant_mt <- kraken_130_species %>% 
-  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"]))
-
-# Get the min library depth
-raremax <- min(rowSums(abund_plant_mt))
-# Perform rarefaction
-set.seed(1025)
-abund_spec_plant_rare_mt <- rrarefy(abund_plant_mt,raremax) %>%
-  t() %>% 
-  as.data.frame() %>% 
-  filter(rowSums(across(everything())) > 0) %>%
-  t() %>% 
-  as.data.frame()
-  
-# Check that this worked-- YES
-abund_spec_plant_rare_mt %>% 
-  t() %>% 
-  as.data.frame() %>% 
-  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
-```
-
-For viruses
-
-```{r}
-# Isolate viral read data for the mountain tapir samples
-abund_virus_mt <- kraken_130_species %>% 
-  filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir == "Mountain"]) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"]))
-
-# Get the min library depth
-raremax <- min(rowSums(abund_virus_mt))
-# Perform rarefaction
-set.seed(1025)
-abund_spec_virus_rare_mt <- rrarefy(abund_virus_mt,raremax) %>%
-  t() %>% 
-  as.data.frame() %>% 
-  filter(rowSums(across(everything())) > 0) %>%
-  t() %>% 
-  as.data.frame()
-  
-# Check that this worked-- YES
-abund_spec_virus_rare_mt %>% 
+abund_fun_mt_select_rare %>% 
   t() %>% 
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
@@ -213,11 +150,99 @@ abund_spec_virus_rare_mt %>%
 Check that the order of samples in the data frame and the metadata are in the same order
 
 ```{r}
-identical(rownames(abund_spec_bac_rare_mt), rownames(metadata_mt))
-identical(rownames(abund_spec_fun_rare_mt), rownames(metadata_mt))
-identical(rownames(abund_spec_arch_rare_mt), rownames(metadata_mt))
-identical(rownames(abund_spec_virus_rare_mt), rownames(metadata_mt))
-identical(rownames(abund_spec_plant_rare_mt), rownames(metadata_mt))
+identical(rownames(abund_bac_mt_select_rare), rownames(metadata_mt_select))
+identical(rownames(abund_arch_mt_select_rare), rownames(metadata_mt_select))
+identical(rownames(abund_fun_mt_select_rare), rownames(metadata_mt_select))
+identical(rownames(abund_virus_mt_select_rare), rownames(metadata_mt_select))
+identical(rownames(abund_plant_mt_select_rare), rownames(metadata_mt_select))
+```
+
+## *Ex-situ* mountain tapirs only (across time)
+
+For bacteria
+
+```{r}
+# Isolate bacterial read data for the mountain tapir samples
+abund_bac_mt_exsitu <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% rownames(metadata_mt_exsitu)) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+
+# Get the min library depth
+raremax <- min(rowSums(abund_bac_mt_exsitu))
+# Perform rarefaction
+set.seed(1025)
+abund_bac_mt_exsitu_rare <- rrarefy(abund_bac_mt_exsitu,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_bac_mt_exsitu_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+For archaea
+
+```{r}
+# Isolate archaea read data for the mountain tapir samples
+abund_arch_mt_exsitu <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% rownames(metadata_mt_exsitu)) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+
+# Get the min library depth
+raremax <- min(rowSums(abund_arch_mt_exsitu))
+# Perform rarefaction
+set.seed(1025)
+abund_arch_mt_exsitu_rare <- rrarefy(abund_arch_mt_exsitu,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_arch_mt_exsitu_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+For fungi
+
+```{r}
+# Isolate fungal read data for the mountain tapir samples
+abund_fun_mt_exsitu <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% rownames(metadata_mt_exsitu)) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+
+# Get the min library depth
+raremax <- min(rowSums(abund_fun_mt_exsitu))
+# Perform rarefaction
+set.seed(1025)
+abund_fun_mt_exsitu_rare <- rrarefy(abund_fun_mt_exsitu,raremax) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  filter(rowSums(across(everything())) > 0) %>%
+  t() %>% 
+  as.data.frame()
+  
+# Check that this worked-- YES
+abund_fun_mt_exsitu_rare %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+```
+
+Check that the order of samples in the data frame and the metadata are in the same order
+
+```{r}
+identical(rownames(abund_bac_mt_exsitu_rare), rownames(metadata_mt_exsitu))
+identical(rownames(abund_arch_mt_exsitu_rare), rownames(metadata_mt_exsitu))
+identical(rownames(abund_fun_mt_exsitu_rare), rownames(metadata_mt_exsitu))
 ```
 
 # Perform rarefaction for higher taxa using dam-calf-sire samples only
@@ -234,7 +259,7 @@ abund_bac_dcs <- kraken_130_species %>%
 raremax <- min(rowSums(abund_bac_dcs))
 # Perform rarefaction
 set.seed(1025)
-abund_spec_bac_rare_dcs <- rrarefy(abund_bac_dcs,raremax) %>%
+abund_bac_dcs_rare <- rrarefy(abund_bac_dcs,raremax) %>%
   t() %>% 
   as.data.frame() %>% 
   filter(rowSums(across(everything())) > 0) %>%
@@ -242,7 +267,7 @@ abund_spec_bac_rare_dcs <- rrarefy(abund_bac_dcs,raremax) %>%
   as.data.frame()
   
 # Check that this worked-- YES
-abund_spec_bac_rare_dcs %>% 
+abund_bac_dcs_rare %>% 
   t() %>% 
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
@@ -260,7 +285,7 @@ abund_arch_dcs <- kraken_130_species %>%
 raremax <- min(rowSums(abund_arch_dcs))
 # Perform rarefaction
 set.seed(1025)
-abund_spec_arch_rare_dcs <- rrarefy(abund_arch_dcs,raremax) %>%
+abund_arch_dcs_rare <- rrarefy(abund_arch_dcs,raremax) %>%
   t() %>% 
   as.data.frame() %>% 
   filter(rowSums(across(everything())) > 0) %>%
@@ -268,7 +293,7 @@ abund_spec_arch_rare_dcs <- rrarefy(abund_arch_dcs,raremax) %>%
   as.data.frame()
   
 # Check that this worked-- YES
-abund_spec_arch_rare_dcs %>% 
+abund_arch_dcs_rare %>% 
   t() %>% 
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
@@ -286,7 +311,7 @@ abund_fun_dcs <- kraken_130_species %>%
 raremax <- min(rowSums(abund_fun_dcs))
 # Perform rarefaction
 set.seed(1025)
-abund_spec_fun_rare_dcs <- rrarefy(abund_fun_dcs,raremax) %>%
+abund_fun_dcs_rare <- rrarefy(abund_fun_dcs,raremax) %>%
   t() %>% 
   as.data.frame() %>% 
   filter(rowSums(across(everything())) > 0) %>%
@@ -294,7 +319,7 @@ abund_spec_fun_rare_dcs <- rrarefy(abund_fun_dcs,raremax) %>%
   as.data.frame()
   
 # Check that this worked-- YES
-abund_spec_fun_rare_dcs %>% 
+abund_fun_dcs_rare %>% 
   t() %>% 
   as.data.frame() %>% 
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
@@ -303,7 +328,7 @@ abund_spec_fun_rare_dcs %>%
 Check that the order of samples in the data frame and the metadata are in the same order
 
 ```{r}
-identical(rownames(abund_spec_bac_rare_dcs), rownames(metadata_dcs))
-identical(rownames(abund_spec_fun_rare_dcs), rownames(metadata_dcs))
-identical(rownames(abund_spec_arch_rare_dcs), rownames(metadata_dcs))
+identical(rownames(abund_bac_dcs_rare), rownames(metadata_dcs))
+identical(rownames(abund_arch_dcs_rare), rownames(metadata_dcs))
+identical(rownames(abund_fun_dcs_rare), rownames(metadata_dcs))
 ```

@@ -18,113 +18,58 @@ library(patchwork)
 library(lubridate)
 ```
 
-# Set-up input and calculate Shannon diversity
+# Set-up input and calculate alpha diversity measures for each data set
 
 ```{r}
-# Calculate diversity and richness for the three domains in mountain tapirs
-metadata_mt$shannon_bac <- diversity(abund_spec_bac_rare_mt, index = "shannon")
-metadata_mt$simpson_bac <- diversity(abund_spec_bac_rare_mt, index = "simpson")
-metadata_mt$rich_bac <- specnumber(abund_spec_bac_rare_mt)
+# Factor the Group variable so that the box plots are ordered the way I want
+metadata_mt_select <- metadata_mt_select %>%
+  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ"))) 
 
-metadata_mt$shannon_arch <- diversity(abund_spec_arch_rare_mt, index = "shannon")
-metadata_mt$simpson_arch <- diversity(abund_spec_arch_rare_mt, index = "simpson")
-metadata_mt$rich_arch <- specnumber(abund_spec_arch_rare_mt)
+# Calculate diversity and richness for the three domains in mountain tapirs select
+metadata_mt_select$rich_bac <- specnumber(abund_bac_mt_select_rare)
+metadata_mt_select$shannon_bac <- diversity(abund_bac_mt_select_rare, index = "shannon")
+metadata_mt_select$simpson_bac <- diversity(abund_bac_mt_select_rare, index = "simpson")
 
-metadata_mt$shannon_fun <- diversity(abund_spec_fun_rare_mt, index = "shannon")
-metadata_mt$simpson_fun <- diversity(abund_spec_fun_rare_mt, index = "simpson")
-metadata_mt$rich_fun <- specnumber(abund_spec_fun_rare_mt)
+metadata_mt_select$rich_arch <- specnumber(abund_arch_mt_select_rare)
+metadata_mt_select$shannon_arch <- diversity(abund_arch_mt_select_rare, index = "shannon")
+metadata_mt_select$simpson_arch <- diversity(abund_arch_mt_select_rare, index = "simpson")
 
+metadata_mt_select$rich_fun <- specnumber(abund_fun_mt_select_rare)
+metadata_mt_select$shannon_fun <- diversity(abund_fun_mt_select_rare, index = "shannon")
+metadata_mt_select$simpson_fun <- diversity(abund_fun_mt_select_rare, index = "simpson")
 
-# Calculate diversity and richness for the three domains in dam-calf-sire samples
-metadata_dcs$shannon_bac <- diversity(abund_spec_bac_rare_dcs, index = "shannon")
-metadata_dcs$simpson_bac <- diversity(abund_spec_bac_rare_dcs, index = "simpson")
-metadata_dcs$rich_bac <- specnumber(abund_spec_bac_rare_dcs)
-
-metadata_dcs$shannon_arch <- diversity(abund_spec_arch_rare_dcs, index = "shannon")
-metadata_dcs$simpson_arch <- diversity(abund_spec_arch_rare_dcs, index = "simpson")
-metadata_dcs$rich_arch <- specnumber(abund_spec_arch_rare_dcs)
-
-metadata_dcs$shannon_fun <- diversity(abund_spec_fun_rare_dcs, index = "shannon")
-metadata_dcs$simpson_fun <- diversity(abund_spec_fun_rare_dcs, index = "simpson")
-metadata_dcs$rich_fun <- specnumber(abund_spec_fun_rare_dcs)
+# Set color vector
+mt_select_col <- c("Wild" = "#99FF33", "Ex-situ" = "#A6A6A6")
 
 ```
 
-# Moutain tapir Wild v. *Ex-situ* alpha diversity assessment
-
-I am trying to determine whether to use the aggregate method for ex-situ samples and then apply a wilcox test (easiest). or if I should go through the trouble of figuring out a bootstrapped LMM. Are ex-situ samples variable enough to make it worth it?
-
-```{r}
-ggplot(metadata_mt, aes(x = Animal_Code, y = simpson_arch)) +
-  geom_point() +
-  stat_summary(fun = median, geom = "point", color = "red", size = 3) +
-  facet_wrap(~Specific_Group, scales = "free_x")
-```
-
-Let's see how much variation is between groups versus within individual variation
-
-```{r}
-library(dplyr)
-
-# Within-animal noise (Group A only)
-within_summary <- metadata_mt %>%
-  filter(Specific_Group == "Ex-situ") %>%
-  group_by(Animal_Code) %>%
-  summarise(within_sd = sd(rich_bac))
-
-mean_within_sd <- mean(within_summary$within_sd)
-
-# The actual effect you're testing: difference between group medians
-group_medians <- metadata_mt %>%
-  group_by(Specific_Group) %>%
-  summarise(median_shannon = median(rich_bac))
-
-group_diff <- diff(range(group_medians$median_shannon))
-
-cat("Average within-animal SD:", mean_within_sd, "\n")
-cat("Difference between group medians:", group_diff, "\n")
-cat("Ratio (within-animal noise / group difference):", mean_within_sd / group_diff, "\n")
-
-# rich_bac = 0.5609413
-# Shannon_bac = 2.794944
-# simpson_bac = 29.82773
-
-# rich_arch = 0.6421049
-# shannon_arch = 0.4117306
-# simpson_arch = 0.8717713
-
-# rich_fun = 1.402629
-# shannon_fun = 0.4630361
-# simpson_fun = 0.3462595
-```
+# Mountain tapir Wild v. *Ex-situ* alpha diversity assessment (select samples)
 
 ## Bacteria
 
-### Set up the variables, run the Wilcox test, and make the plots 
+### Set up the variables, run the Wilcox test, and make the plots
 
 ```{r}
 # Richness
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(rich_bac), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(rich_bac ~ Specific_Group, 
+            data = metadata_mt_select)
 
 # Create box plot
-p1 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p1 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = rich_bac, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
                       "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
+                    )) +
   theme(
     title = element_text(size = 16),
     axis.title = element_text(size = 16), 
@@ -142,21 +87,19 @@ p1
 
 
 # Shannon
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(shannon_bac), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(shannon_bac ~ Specific_Group, 
+            data = metadata_mt_select)
 # Create box plot
-p2 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p2 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = shannon_bac, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -177,22 +120,20 @@ p2 <- ggplot(data = agg_data,
   ylab("Shannon")
 p2
 
-# Shannon
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(simpson_bac), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+# Simpson
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(simpson_bac ~ Specific_Group, 
+            data = metadata_mt_select)
 # Create box plot
-p3 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p3 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = simpson_bac, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -224,39 +165,37 @@ p3
         plot.title= element_markdown()) 
 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.pdf",
-       width=6,
-       height=3.4)
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.tiff",
-       width=6,
-       height=3.4)
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.png",
-       width=6,
-       height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.pdf",
+#        width=6,
+#        height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.tiff",
+#        width=6,
+#        height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.png",
+#        width=6,
+#        height=3.4)
 ```
 
 ## Archaea
 
-### Set up the variables, run the Wilcox test, and make the plots 
+### Set up the variables, run the Wilcox test, and make the plots
 
 ```{r}
 # Richness
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(rich_arch), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(rich_arch ~ Specific_Group, 
+            data = metadata_mt_select)
 
 # Create box plot
-p1 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p1 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = rich_arch, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -279,21 +218,19 @@ p1
 
 
 # Shannon
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(shannon_arch), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(shannon_arch ~ Specific_Group, 
+            data = metadata_mt_select)
 # Create box plot
-p2 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p2 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = shannon_arch, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -314,22 +251,20 @@ p2 <- ggplot(data = agg_data,
   ylab("Shannon")
 p2
 
-# Shannon
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(simpson_arch), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+# Simpson
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(simpson_arch ~ Specific_Group, 
+            data = metadata_mt_select)
 # Create box plot
-p3 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p3 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = simpson_arch, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -361,39 +296,37 @@ p3
         plot.title= element_markdown()) 
 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.pdf",
-       width=6,
-       height=3.4)
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.tiff",
-       width=6,
-       height=3.4)
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.png",
-       width=6,
-       height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.pdf",
+#        width=6,
+#        height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.tiff",
+#        width=6,
+#        height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_arch_species_rare.png",
+#        width=6,
+#        height=3.4)
 ```
 
 ## Fungi
 
-### Set up the variables, run the Wilcox test, and make the plots 
+### Set up the variables, run the Wilcox test, and make the plots
 
 ```{r}
 # Richness
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(rich_fun), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(rich_fun ~ Specific_Group, 
+            data = metadata_mt_select)
 
 # Create box plot
-p1 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p1 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = rich_fun, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -416,21 +349,19 @@ p1
 
 
 # Shannon
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(shannon_fun), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(shannon_fun ~ Specific_Group, 
+            data = metadata_mt_select)
 # Create box plot
-p2 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p2 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = shannon_fun, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -451,22 +382,20 @@ p2 <- ggplot(data = agg_data,
   ylab("Shannon")
 p2
 
-# Shannon
-agg_data <- metadata_mt %>%
-  group_by(Animal_Code, Specific_Group) %>%
-  summarise(median = median(simpson_fun), .groups = "drop") %>% 
-  mutate(Specific_Group = factor(Specific_Group, levels = c("Wild", "Ex-situ")))
+# Simpson
 
-wilcox.test(median ~ Specific_Group, 
-            data = agg_data)
+# Run statistical test
+# Are the medians different between wild and ex-situ?
+wilcox.test(simpson_fun ~ Specific_Group, 
+            data = metadata_mt_select)
 # Create box plot
-p3 <- ggplot(data = agg_data, 
-       aes(x = Specific_Group, y = median, 
+p3 <- ggplot(data = metadata_mt_select, 
+       aes(x = Specific_Group, y = simpson_fun, 
            fill = Specific_Group)) + 
   geom_boxplot() + 
   geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
   theme_bw() + 
-  scale_fill_manual(name = "Group", values = c("#99FF33", "#A6A6A6"),
+  scale_fill_manual(name = "Group", values = mt_select_col,
                     breaks = c("Wild", "Ex-situ"),
                     labels = c(
                       "Wild" = "Wild",
@@ -498,15 +427,15 @@ p3
         plot.title= element_markdown()) 
 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.pdf",
-       width=6,
-       height=3.4)
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.tiff",
-       width=6,
-       height=3.4)
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.png",
-       width=6,
-       height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.pdf",
+#        width=6,
+#        height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.tiff",
+#        width=6,
+#        height=3.4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_fun_species_rare.png",
+#        width=6,
+#        height=3.4)
 ```
 
 # *Ex-situ* Mt. Tapir alpha diversity over time
@@ -528,7 +457,7 @@ plot_mt <- function (data, variable) {
     #                    limits = c(1,9)) +
   scale_color_manual(name = "Animal", 
                      values = c("#619cff","#b79f00",
-                                "#7CAE00","yellow3","#F564E3",
+                                "#7CAE00","yellow3","#F564E3", # yellow3 is #CDCD00
                                 "#00b4f0","#de8c00")) +
   scale_shape_manual(values = c(15,19)) +
   guides(color = guide_legend(
@@ -544,18 +473,39 @@ plot_mt <- function (data, variable) {
 }
 ```
 
+### Set up variables and calculate diversity
+
 ```{r}
-# Select the data for the ex-situ mountain tapirs
-meta_long <- metadata_mt %>% 
-  filter(Specific_Group == "Ex-situ") %>% 
+# Calculate diversity and richness for the three domains in mountain tapirs select
+metadata_mt_exsitu$rich_bac <- specnumber(abund_bac_mt_exsitu_rare)
+metadata_mt_exsitu$shannon_bac <- diversity(abund_bac_mt_exsitu_rare, index = "shannon")
+metadata_mt_exsitu$simpson_bac <- diversity(abund_bac_mt_exsitu_rare, index = "simpson")
+
+metadata_mt_exsitu$rich_arch <- specnumber(abund_arch_mt_exsitu_rare)
+metadata_mt_exsitu$shannon_arch <- diversity(abund_arch_mt_exsitu_rare, index = "shannon")
+metadata_mt_exsitu$simpson_arch <- diversity(abund_arch_mt_exsitu_rare, index = "simpson")
+
+metadata_mt_exsitu$rich_fun <- specnumber(abund_fun_mt_exsitu_rare)
+metadata_mt_exsitu$shannon_fun <- diversity(abund_fun_mt_exsitu_rare, index = "shannon")
+metadata_mt_exsitu$simpson_fun <- diversity(abund_fun_mt_exsitu_rare, index = "simpson")
+
+# Set color vector
+
+# Fix the date variable so I can actually graph with it
+meta_long <- metadata_mt_exsitu %>% 
   mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
   mutate(months_since_start = (time_length(interval(min(Date_collected), Date_collected), unit = "months") + 1))
 
+```
+
+### Make the figures
+
+```{r}
 
 # Richness
 # bacteria 
 p1 <- plot_mt(data = meta_long, variable = "rich_bac") + 
-  ylim(11700,12400) + 
+  ylim(11600,12450) + 
   ylab("Species Richness") + 
   xlab("") + 
   ggtitle("Bacteria") 
@@ -563,7 +513,7 @@ p1
 
 # archaea
 p2 <- plot_mt(data = meta_long, variable = "rich_arch") + 
-  ylim(350,500) +
+  ylim(400,515) +
   ylab("") + 
   xlab("") + 
   ggtitle("Archaea") 
@@ -634,18 +584,18 @@ p9
         plot.title= element_markdown()) 
 
 
-# Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.tiff",
-       width = 1725,
-       height = 894,
-       units = "px",
-       dpi = 96.14)
-
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.png",
-       width = 1725,
-       height = 894,
-       units = "px",
-       dpi = 96.14)
+# # Save the figure
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.tiff",
+#        width = 1725,
+#        height = 894,
+#        units = "px",
+#        dpi = 96.14)
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.png",
+#        width = 1725,
+#        height = 894,
+#        units = "px",
+#        dpi = 96.14)
 
 # The 3 panel figure
 ((p4 + ggtitle("Bacteria")) | (p5 + ggtitle("Archaea") + xlab("Date")) | (p6 + ggtitle("Fungi")) ) + 
@@ -658,16 +608,34 @@ ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental sepa
         axis.text.x = element_text(angle = 45, vjust = 0.5),
         panel.grid.minor = element_blank())
 
-# Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.tiff",
-       width = 14,
-       height = 5,
-       units = "in")
+# # Save the figure
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.tiff",
+#        width = 14,
+#        height = 5,
+#        units = "in")
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.png",
+#        width = 14,
+#        height = 5,
+#        units = "in")
+```
 
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.png",
-       width = 14,
-       height = 5,
-       units = "in")
+# Set up Dam-Calf data
+
+```{r}
+# Calculate diversity and richness for the three domains in dam-calf-sire samples
+metadata_dcs$rich_bac <- specnumber(abund_bac_dcs_rare)
+metadata_dcs$shannon_bac <- diversity(abund_bac_dcs_rare, index = "shannon")
+metadata_dcs$simpson_bac <- diversity(abund_bac_dcs_rare, index = "simpson")
+
+metadata_dcs$rich_arch <- specnumber(abund_arch_dcs_rare)
+metadata_dcs$shannon_arch <- diversity(abund_arch_dcs_rare, index = "shannon")
+metadata_dcs$simpson_arch <- diversity(abund_arch_dcs_rare, index = "simpson")
+
+metadata_dcs$rich_fun <- specnumber(abund_fun_dcs_rare)
+metadata_dcs$shannon_fun <- diversity(abund_fun_dcs_rare, index = "shannon")
+metadata_dcs$simpson_fun <- diversity(abund_fun_dcs_rare, index = "simpson")
+
 ```
 
 # Malayan tapir calf-dam over time
@@ -708,7 +676,7 @@ plot_Mal <- function (data, variable) {
 ```
 
 ```{r}
-# Select the data for the ex-situ mountain tapirs
+# Fix the date variable so I can actually graph with it and select Malayan Tapirs
 meta_long <- metadata_dcs %>% 
   filter(Tapir == "Malayan") %>% 
   mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
@@ -721,15 +689,15 @@ plot_Mal(data = meta_long, variable = "shannon_bac")
 p1 <- plot_Mal(data = meta_long, variable = "rich_bac") + 
   ylab("Species Richness") + 
   xlab("") + 
-  ggtitle("Bacteria") + 
-  ylim(9000,12000)
+  ggtitle("Bacteria") #+ 
+  #ylim(9000,12000)
 p1
 # Archaea 
 p2 <- plot_Mal(data = meta_long, variable = "rich_arch") + 
   ylab("") + 
   xlab("") + 
-  ggtitle("Archaea") + 
-  ylim(50,400)
+  ggtitle("Archaea") #+ 
+  #ylim(50,400)
 p2
 # Fungi
 p3 <- plot_Mal(data = meta_long, variable = "rich_fun") + 
@@ -798,18 +766,18 @@ p9
         plot.title= element_markdown())  
 
 
-# Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.tiff", 
-       width = 1725,
-       height = 894,
-       units = "px",
-       dpi = 96.14)
-
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.png", 
-       width = 1725,
-       height = 894,
-       units = "px",
-       dpi = 96.14)
+# # Save the figure
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.tiff", 
+#        width = 1725,
+#        height = 894,
+#        units = "px",
+#        dpi = 96.14)
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.png", 
+#        width = 1725,
+#        height = 894,
+#        units = "px",
+#        dpi = 96.14)
 
 # The panel we are actually going to use
 ((p4 + ggtitle("Bacteria")) | (p5 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p6 + ggtitle("Fungi")) ) + 
@@ -820,16 +788,16 @@ ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental sepa
         legend.position = "right",
         plot.title= element_markdown()) 
 
-# Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.tiff", 
-       width = 14,
-       height = 5,
-       units = "in")
-
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.png", 
-       width = 14,
-       height = 5,
-       units = "in")
+# # Save the figure
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.tiff", 
+#        width = 14,
+#        height = 5,
+#        units = "in")
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.png", 
+#        width = 14,
+#        height = 5,
+#        units = "in")
 ```
 
 # Lowland tapir calf -dam over time
@@ -870,7 +838,7 @@ plot_Low <- function (data, variable) {
 ```
 
 ```{r}
-# Select the data for the ex-situ mountain tapirs
+# Fix the date variable so I can actually graph with it
 meta_long <- metadata_dcs %>% 
   filter(Tapir == "Lowland") %>% 
   mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
@@ -954,19 +922,19 @@ p9
         plot.title= element_markdown())  
 
 
-# Save the plots
-
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.tiff",
-       width = 1725,
-       height = 894,
-       units = "px",
-       dpi = 96.14)
-
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.png",
-       width = 1725,
-       height = 894,
-       units = "px",
-       dpi = 96.14)
+# # Save the plots
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.tiff",
+#        width = 1725,
+#        height = 894,
+#        units = "px",
+#        dpi = 96.14)
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.png",
+#        width = 1725,
+#        height = 894,
+#        units = "px",
+#        dpi = 96.14)
 
 
 # The panel we are actually going to use
@@ -978,14 +946,14 @@ ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental sepa
         legend.position = "right",
         plot.title= element_markdown()) 
 
-# Save the figure
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.tiff",
-       width = 14,
-       height = 5,
-       units = "in")
-
-ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.png",
-       width = 14,
-       height = 5,
-       units = "in")
+# # Save the figure
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.tiff",
+#        width = 14,
+#        height = 5,
+#        units = "in")
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.png",
+#        width = 14,
+#        height = 5,
+#        units = "in")
 ```
