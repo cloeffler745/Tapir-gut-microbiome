@@ -71,7 +71,8 @@ abund_bac_mt_select <- kraken_130_species %>%
   filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
                                              "33_S25", "35_S27", "37_S29", "48_S40",
                                              "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))  %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_bac_mt_select))
@@ -99,7 +100,8 @@ abund_arch_mt_select <- kraken_130_species %>%
   filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
                                              "33_S25", "35_S27", "37_S29", "48_S40",
                                              "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_arch_mt_select))
@@ -127,7 +129,8 @@ abund_fun_mt_select <- kraken_130_species %>%
   filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
                                              "33_S25", "35_S27", "37_S29", "48_S40",
                                              "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_fun_mt_select))
@@ -153,8 +156,6 @@ Check that the order of samples in the data frame and the metadata are in the sa
 identical(rownames(abund_bac_mt_select_rare), rownames(metadata_mt_select))
 identical(rownames(abund_arch_mt_select_rare), rownames(metadata_mt_select))
 identical(rownames(abund_fun_mt_select_rare), rownames(metadata_mt_select))
-identical(rownames(abund_virus_mt_select_rare), rownames(metadata_mt_select))
-identical(rownames(abund_plant_mt_select_rare), rownames(metadata_mt_select))
 ```
 
 ## *Ex-situ* mountain tapirs only (across time)
@@ -165,7 +166,8 @@ For bacteria
 # Isolate bacterial read data for the mountain tapir samples
 abund_bac_mt_exsitu <- kraken_130_species %>% 
   filter(rownames(kraken_130_species) %in% rownames(metadata_mt_exsitu)) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_bac_mt_exsitu))
@@ -191,7 +193,8 @@ For archaea
 # Isolate archaea read data for the mountain tapir samples
 abund_arch_mt_exsitu <- kraken_130_species %>% 
   filter(rownames(kraken_130_species) %in% rownames(metadata_mt_exsitu)) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_arch_mt_exsitu))
@@ -217,7 +220,8 @@ For fungi
 # Isolate fungal read data for the mountain tapir samples
 abund_fun_mt_exsitu <- kraken_130_species %>% 
   filter(rownames(kraken_130_species) %in% rownames(metadata_mt_exsitu)) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_fun_mt_exsitu))
@@ -253,7 +257,8 @@ For bacteria
 # Isolate bacterial read data for the mountain tapir samples
 abund_bac_dcs <- kraken_130_species %>% 
   filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir != "Mountain"]) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Bacteria"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_bac_dcs))
@@ -279,7 +284,8 @@ For Archaea
 # Isolate archaeal read data for the mountain tapir samples
 abund_arch_dcs <- kraken_130_species %>% 
   filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir != "Mountain"]) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Archaea"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_arch_dcs))
@@ -305,7 +311,8 @@ For Fungi
 # Isolate fungal read data for the mountain tapir samples
 abund_fun_dcs <- kraken_130_species %>% 
   filter(rownames(kraken_130_species) %in% metadata$Fastq_name[metadata$Tapir != "Mountain"]) %>% 
-  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"]))
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Fungi"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
 
 # Get the min library depth
 raremax <- min(rowSums(abund_fun_dcs))

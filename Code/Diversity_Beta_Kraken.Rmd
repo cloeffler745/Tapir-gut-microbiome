@@ -10,32 +10,20 @@ library(ape) # pcoa
 library(ggtext)
 library(patchwork)
 library(ggrepel)
+library(openxlsx) # write.xlsx
 ```
 
 # Functions
 
 ```{r}
-# Returns a data frame with only specific samples based on metadata values
-select_samples <- function(data, metadata, group = "", values = c()) {
-  hold <- metadata$Fastq_name[metadata[[group]] %in% values]
-  data_subset <- data %>% 
-    t() %>% 
-    as.data.frame() %>%
-    select(any_of(hold)) %>% 
-    t()
-  
-  return(data_subset)
-}
-
-# Does a TSS normalization on a data frame and then returns a beta-diversity 
-# distance matrix
+# Removes species that are not present in any sample
+# returns a beta-diversity distance matrix
 beta_get <- function(data, method = "bray", binary = FALSE) {
   data_abund <- data %>% 
     t() %>% # Columns must be Samples
     as.data.frame() %>%
     filter(rowSums(.) > 0) %>% # keep rows (species) that satisfy the conditions
-    # tss() %>% # cols = samples 
-    t() %>%
+    t() %>% # Flip back to having samples as rows
     as.matrix() 
   
   data_beta <- vegdist(data_abund, method = method, binary = binary)
@@ -44,49 +32,31 @@ beta_get <- function(data, method = "bray", binary = FALSE) {
 }
 ```
 
-# Captive v. Wild
+# Wild v. *Ex-situ* mountain tapirs
 
-## Set-up Variables and Data
+## Calculate Beta-Diversity measures
 
 ```{r}
-# Metadata 
-meta_test <- metadata %>% 
-  filter(Specific_Group %in% c("Wild","Ex-situ")) %>% 
-  group_by(Animal_Code) %>% 
-  arrange(Date_collected, .by_group = TRUE) %>% 
-  slice(1) %>% # grab the first date samples were taken from each animal 
-  ungroup() %>% 
-  mutate(Fastq_name = factor(.$Fastq_name, levels = c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23", "33_S25", 
-                                                      "35_S27", "37_S29", "48_S40", "49_S41", "6_S3",
-                                                      "87_S105", "9_S4"))) %>% 
-  arrange(Fastq_name) %>% 
-  as.data.frame()
-row.names(meta_test) <- meta_test$Fastq_name
+# Distance matrix select mountain tapirs
+data_beta_Jac_bac <- beta_get(abund_bac_mt_select_rare, 
+                              method = "jaccard", binary = TRUE)
+data_beta_BC_bac <- beta_get(abund_bac_mt_select_rare)
 
+data_beta_Jac_arch <- beta_get(abund_arch_mt_select_rare, 
+                               method = "jaccard", binary = TRUE)
+data_beta_BC_arch <- beta_get(abund_arch_mt_select_rare)
 
-# The abundance tables
-Selected_bac <- abund_spec_bac_rare[row.names(abund_spec_bac_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_arch <- abund_spec_arch_rare[row.names(abund_spec_arch_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_fun <- abund_spec_fun_rare[row.names(abund_spec_fun_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_virus <- abund_spec_virus_rare[row.names(abund_spec_virus_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
+data_beta_Jac_fun <- beta_get(abund_fun_mt_select_rare, 
+                              method = "jaccard", binary = TRUE)
+data_beta_BC_fun <- beta_get(abund_fun_mt_select_rare)
 
-
-# Distance matrices
-data_beta_BC_bac <- beta_get(Selected_bac)
-data_beta_Jac_bac <- beta_get(Selected_bac, method = "jaccard", binary = TRUE)
-
-data_beta_BC_arch <- beta_get(Selected_arch)
-data_beta_Jac_arch <- beta_get(Selected_arch, method = "jaccard", binary = TRUE)
-
-data_beta_BC_fun <- beta_get(Selected_fun)
-data_beta_Jac_fun <- beta_get(Selected_fun, method = "jaccard", binary = TRUE)
-
-data_beta_BC_virus <- beta_get(Selected_virus)
-data_beta_Jac_virus <- beta_get(Selected_virus, method = "jaccard", binary = TRUE)
+# Check the order
+identical(labels(data_beta_Jac_bac), rownames(metadata_mt_select))
+identical(labels(data_beta_BC_bac), rownames(metadata_mt_select))
+identical(labels(data_beta_Jac_arch), rownames(metadata_mt_select))
+identical(labels(data_beta_BC_arch), rownames(metadata_mt_select))
+identical(labels(data_beta_Jac_fun), rownames(metadata_mt_select))
+identical(labels(data_beta_BC_fun), rownames(metadata_mt_select))
 ```
 
 ## Bacteria
@@ -94,18 +64,17 @@ data_beta_Jac_virus <- beta_get(Selected_virus, method = "jaccard", binary = TRU
 ### Calculate statistics
 
 ```{r}
-# Bray-Curtis P = 0.0006999
+# Jaccard
 set.seed(1025)
-adonis2(data_beta_BC_bac ~ Group, 
-        data = meta_test, 
+adonis2(data_beta_Jac_bac ~ Group, 
+        data = metadata_mt_select, 
         permutations = 10000, 
         by = "margin")
 
-
-# Jaccard P = 0.0006999
+# Bray-Curtis 
 set.seed(1025)
-adonis2(data_beta_Jac_bac ~ Group, 
-        data = meta_test, 
+adonis2(data_beta_BC_bac ~ Group, 
+        data = metadata_mt_select, 
         permutations = 10000, 
         by = "margin")
 
@@ -114,73 +83,38 @@ adonis2(data_beta_Jac_bac ~ Group,
 ### Beta dispersion test for the significant values
 
 ```{r}
-# Bray Curtis
-# Calculate the values (levene test analogue)
-bray_disp_BC <- betadisper(data_beta_BC_bac, 
-                        meta_test$Group)
-# Actually give me a p-value to assess results
-set.seed(1025)
-permutest(bray_disp_BC, 
-          permutations = how(nperm=10000))
-# Show me a plot
-plot(bray_disp_BC, main = "Bray Curtis (p = 0.0466)")
-
-
 # Jaccard
 # Calculate the values (levene test analogue)
 bray_disp_Jac <- betadisper(data_beta_Jac_bac, 
-                        meta_test$Group)
+                        metadata_mt_select$Group)
 # Actually give me a p-value to assess results
 set.seed(1025)
 permutest(bray_disp_Jac, 
           permutations = how(nperm=10000))
 # Show me a plot
-plot(bray_disp_Jac, main = "Jaccard (p = 0.008199)") 
+plot(bray_disp_Jac, main = "Jaccard") 
+
+
+# Bray Curtis
+# Calculate the values (levene test analogue)
+bray_disp_BC <- betadisper(data_beta_BC_bac, 
+                        metadata_mt_select$Group)
+# Actually give me a p-value to assess results
+set.seed(1025)
+permutest(bray_disp_BC, 
+          permutations = how(nperm=10000))
+# Show me a plot
+plot(bray_disp_BC, main = "Bray Curtis")
+
 ```
 
 ### Plot
 
 ```{r}
-# Bray Curtis
-# Calculate the ordination
-bray_ordination <- pcoa(data_beta_BC_bac)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Bray-Curtis") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
-  
-plot_bray_Group_BC
-
-
 # Jaccard
 bray_ordination <- pcoa(data_beta_Jac_bac)
 points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
+points2 <- cbind(points, metadata_mt_select)
 # Get variances for each dimension
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
@@ -211,6 +145,43 @@ plot_bray_Group_Jac <- ggplot(points2,
   
 plot_bray_Group_Jac
 
+
+# Bray Curtis
+# Calculate the ordination
+bray_ordination <- pcoa(data_beta_BC_bac)
+points <- bray_ordination$vectors
+points2 <- cbind(points, metadata_mt_select)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_BC <- ggplot(points2, 
+                              aes(x = Axis.1, 
+                                  y = Axis.2, 
+                                  fill = Group)) + 
+  geom_point(shape = 21, size = 2) +
+  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
+  ggtitle("Bray-Curtis") + 
+  scale_fill_manual(
+    name = "Group",
+    breaks = c("Wild", "Ex-situ"),
+    values = c(
+      "Wild" = "#99FF33",
+      "Ex-situ" = "#A6A6A6"
+    ),
+    labels = c(
+      "Wild" = "Wild",
+      "Ex-situ" = expression(italic("Ex-situ")))) +
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12))
+  
+plot_bray_Group_BC
+
+
 (plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
                              title = "") + 
   plot_layout(guides = "collect") &
@@ -219,7 +190,7 @@ plot_bray_Group_Jac
         legend.position = "bottom") 
 
 
-# p = 0.0006999, R2 = 0.3113
+
 # Save the plot
 # ggsave(file = "../Images/Manuscript (Frontiers)/WvE_bac_species_beta_div_rare.pdf",
 #        height = 4,
@@ -237,100 +208,99 @@ plot_bray_Group_Jac
 #        units = "in")
 ```
 
-plot for the presentation
-
-```{r}
-bray_ordination <- pcoa(data_beta_BC_bac)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 3) +
-  theme_bw() + 
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  labs(color = "Group") + 
-  ggtitle("Bray-Curtis (p = 0.000699*)") + 
-  scale_fill_manual(values = c("#A6A6A6","#99FF33")) + 
-  theme(title = element_text(size = 16),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        legend.position = "none",
-        plot.title = element_markdown()) 
-  
-plot_bray_Group_BC
-
-ggsave( file = "../Images/Presentation/Beta_bac_BC.png", 
-        units = "in",
-        height = 3.48,
-        width = 4)
-```
-
 ## Archaea
 
 ### Calculate statistics
 
 ```{r}
-# Bray-Curtis P = 0.0011
-set.seed(1025)
-adonis2(data_beta_BC_arch ~ Group, 
-        data = meta_test, 
-        permutations = 10000, 
-        by = "margin")
-
-
-# Jaccard P = 0.0006999
+# Jaccard 
 set.seed(1025)
 adonis2(data_beta_Jac_arch ~ Group, 
-        data = meta_test, 
+        data = metadata_mt_select, 
         permutations = 10000, 
         by = "margin")
 
+
+# Bray-Curtis 
+set.seed(1025)
+adonis2(data_beta_BC_arch ~ Group, 
+        data = metadata_mt_select, 
+        permutations = 10000, 
+        by = "margin")
 ```
 
 ### Beta dispersion test for the significant values
 
 ```{r}
-# Bray Curtis
-# Calculate the values (levene test analogue)
-bray_disp_BC <- betadisper(data_beta_BC_arch, 
-                        meta_test$Group)
-# Actually give me a p-value to assess results
-set.seed(1025)
-permutest(bray_disp_BC, 
-          permutations = how(nperm=10000))
-# Show me a plot
-plot(bray_disp_BC, main = "Bray Curtis (p = 0.07589)")
-
-
 # Jaccard
 # Calculate the values (levene test analogue)
 bray_disp_Jac <- betadisper(data_beta_Jac_arch, 
-                        meta_test$Group)
+                        metadata_mt_select$Group)
 # Actually give me a p-value to assess results
 set.seed(1025)
 permutest(bray_disp_Jac, 
           permutations = how(nperm=10000))
 # Show me a plot
-plot(bray_disp_Jac, main = "Jaccard (p = 9.999e-05)") 
+plot(bray_disp_Jac, main = "Jaccard") 
+
+
+# Bray Curtis
+# Calculate the values (levene test analogue)
+bray_disp_BC <- betadisper(data_beta_BC_arch, 
+                        metadata_mt_select$Group)
+# Actually give me a p-value to assess results
+set.seed(1025)
+permutest(bray_disp_BC, 
+          permutations = how(nperm=10000))
+# Show me a plot
+plot(bray_disp_BC, main = "Bray Curtis")
+
 ```
 
 ### Plot
 
 ```{r}
+# Jaccard
+bray_ordination <- pcoa(data_beta_Jac_arch)
+points <- bray_ordination$vectors
+points2 <- cbind(points, metadata_mt_select)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_Jac <- ggplot(points2, 
+                              aes(x = Axis.1, 
+                                  y = Axis.2, 
+                                  fill = Group)) + 
+  geom_point(shape = 21, size = 2) +
+  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
+  ggtitle("Jaccard") + 
+  scale_fill_manual(
+    name = "Group",
+    breaks = c("Wild", "Ex-situ"),
+    values = c(
+      "Wild" = "#99FF33",
+      "Ex-situ" = "#A6A6A6"
+    ),
+    labels = c(
+      "Wild" = "Wild",
+      "Ex-situ" = expression(italic("Ex-situ")))) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12))
+  
+plot_bray_Group_Jac
+
+
+
 # Bray Curtis
 # Calculate the ordination
 bray_ordination <- pcoa(data_beta_BC_arch)
 points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
+points2 <- cbind(points, metadata_mt_select)
 # Get variances for each dimension
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
@@ -362,39 +332,6 @@ plot_bray_Group_BC <- ggplot(points2,
 plot_bray_Group_BC
 
 
-# Jaccard
-bray_ordination <- pcoa(data_beta_Jac_arch)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Jaccard") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
-  
-plot_bray_Group_Jac
 
 (plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
                              title = "") + 
@@ -403,59 +340,22 @@ plot_bray_Group_Jac
         plot.tag.position = c(0.02, 1.02),
         legend.position = "bottom") 
 
-# p = 0.0006999, R2 = 0.3113
+
 # Save the plot
-ggsave(file = "../Images/Manuscript (Frontiers)/WvE_arch_species_beta_div_rare.pdf",
-       height = 4,
-       width = 6,
-       units = "in")
-
-ggsave(file = "../Images/Manuscript (Frontiers)/WvE_arch_species_beta_div_rare.tiff",
-       height = 4,
-       width = 6,
-       units = "in")
-
-ggsave(file = "../Images/Manuscript (Frontiers)/WvE_arch_species_beta_div_rare.png",
-       height = 4,
-       width = 6,
-       units = "in")
-```
-
-Plot for the presentation
-
-```{r}
-bray_ordination <- pcoa(data_beta_BC_arch)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 3) +
-  theme_bw() + 
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  labs(color = "Group") + 
-  ggtitle("Bray-Curtis (p = 0.000699*)") + 
-  scale_fill_manual(values = c("#A6A6A6","#99FF33")) + 
-  theme(title = element_text(size = 16),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        legend.position = "none",
-        plot.title = element_markdown()) 
-  
-plot_bray_Group_BC
-
-ggsave( file = "../Images/Presentation/Beta_arch_BC.png", 
-        units = "in",
-        height = 3.48,
-        width = 4)
+# ggsave(file = "../Images/Manuscript (Frontiers)/WvE_arch_species_beta_div_rare.pdf",
+#        height = 4,
+#        width = 6,
+#        units = "in")
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/WvE_arch_species_beta_div_rare.tiff",
+#        height = 4,
+#        width = 6,
+#        units = "in")
+# 
+# ggsave(file = "../Images/Manuscript (Frontiers)/WvE_arch_species_beta_div_rare.png",
+#        height = 4,
+#        width = 6,
+#        units = "in")
 ```
 
 ## Fungi
@@ -463,18 +363,18 @@ ggsave( file = "../Images/Presentation/Beta_arch_BC.png",
 ### Calculate statistics
 
 ```{r}
-# Bray-Curtis P = 0.0281
+# Jaccard 
 set.seed(1025)
-adonis2(data_beta_BC_fun ~ Group, 
-        data = meta_test, 
+adonis2(data_beta_Jac_fun ~ Group, 
+        data = metadata_mt_select, 
         permutations = 10000, 
         by = "margin")
 
 
-# Jaccard P = 0.6365
+# Bray-Curtis
 set.seed(1025)
-adonis2(data_beta_Jac_fun ~ Group, 
-        data = meta_test, 
+adonis2(data_beta_BC_fun ~ Group, 
+        data = metadata_mt_select, 
         permutations = 10000, 
         by = "margin")
 
@@ -483,38 +383,76 @@ adonis2(data_beta_Jac_fun ~ Group,
 ### Beta dispersion test for the significant values
 
 ```{r}
-# Bray Curtis
-# Calculate the values (levene test analogue)
-bray_disp_BC <- betadisper(data_beta_BC_fun, 
-                        meta_test$Group)
-# Actually give me a p-value to assess results
-set.seed(1025)
-permutest(bray_disp_BC, 
-          permutations = how(nperm=10000))
-# Show me a plot
-plot(bray_disp_BC, main = "Bray Curtis (p = 0.006699)")
-
-
 # Jaccard
 # Calculate the values (levene test analogue)
 bray_disp_Jac <- betadisper(data_beta_Jac_fun, 
-                        meta_test$Group)
+                        metadata_mt_select$Group)
 # Actually give me a p-value to assess results
 set.seed(1025)
 permutest(bray_disp_Jac, 
           permutations = how(nperm=10000))
 # Show me a plot
-plot(bray_disp_Jac, main = "Jaccard (p = 0.2966)") 
+plot(bray_disp_Jac, main = "Jaccard") 
+
+
+# Bray Curtis
+# Calculate the values (levene test analogue)
+bray_disp_BC <- betadisper(data_beta_BC_fun, 
+                        metadata_mt_select$Group)
+# Actually give me a p-value to assess results
+set.seed(1025)
+permutest(bray_disp_BC, 
+          permutations = how(nperm=10000))
+# Show me a plot
+plot(bray_disp_BC, main = "Bray Curtis")
+
 ```
 
 ### Plot
 
 ```{r}
+# Jaccard
+bray_ordination <- pcoa(data_beta_Jac_fun)
+points <- bray_ordination$vectors
+points2 <- cbind(points, metadata_mt_select)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_Jac <- ggplot(points2, 
+                              aes(x = Axis.1, 
+                                  y = Axis.2, 
+                                  fill = Group)) + 
+  geom_point(shape = 21, size = 2) +
+  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
+  ggtitle("Jaccard") + 
+  scale_fill_manual(
+    name = "Group",
+    breaks = c("Wild", "Ex-situ"),
+    values = c(
+      "Wild" = "#99FF33",
+      "Ex-situ" = "#A6A6A6"
+    ),
+    labels = c(
+      "Wild" = "Wild",
+      "Ex-situ" = expression(italic("Ex-situ")))) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12))
+  
+plot_bray_Group_Jac
+
+
+
+
 # Bray Curtis
 # Calculate the ordination
 bray_ordination <- pcoa(data_beta_BC_fun)
 points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
+points2 <- cbind(points, metadata_mt_select)
 # Get variances for each dimension
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
@@ -546,39 +484,7 @@ plot_bray_Group_BC <- ggplot(points2,
 plot_bray_Group_BC
 
 
-# Jaccard
-bray_ordination <- pcoa(data_beta_Jac_fun)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
-# Plot Group
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Jaccard") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
-  
-plot_bray_Group_Jac
 
 (plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
                              title = "") + 
@@ -606,196 +512,45 @@ plot_bray_Group_Jac
 #        units = "in")
 ```
 
-plot for presentation
-
-```{r}
-bray_ordination <- pcoa(data_beta_BC_fun)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 3) +
-  theme_bw() + 
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  labs(fill = "Status") + 
-  ggtitle("Bray-Curtis (p = 0.058)") + 
-  scale_fill_manual(values = c("#A6A6A6","#99FF33")) + 
-  theme(title = element_text(size = 16),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        legend.position = "right",
-        plot.title = element_markdown()) 
-  
-plot_bray_Group_BC
-
-ggsave( file = "../Images/Presentation/Beta_fun_BC.png", 
-        units = "in",
-        height = 3.48,
-        width = 5)
-```
-
-## Virus
-
-### Calculate Statistics
-
-```{r}
-# Bray-Curtis 
-set.seed(1025)
-adonis2(data_beta_BC_virus ~ Group, 
-        data = meta_test, 
-        permutations = 10000, 
-        by = "margin")
-
-
-# Jaccard 
-set.seed(1025)
-adonis2(data_beta_Jac_virus ~ Group, 
-        data = meta_test, 
-        permutations = 10000, 
-        by = "margin")
-```
-
-### Beta dispersion test for the significant values
-
-```{r}
-# Bray Curtis
-# Calculate the values (levene test analogue)
-bray_disp_BC <- betadisper(data_beta_BC_virus, 
-                        meta_test$Group)
-# Actually give me a p-value to assess results
-set.seed(1025)
-permutest(bray_disp_BC, 
-          permutations = how(nperm=10000))
-# Show me a plot
-plot(bray_disp_BC, main = "Bray Curtis")
-
-
-# Jaccard
-# Calculate the values (levene test analogue)
-bray_disp_Jac <- betadisper(data_beta_Jac_virus, 
-                        meta_test$Group)
-# Actually give me a p-value to assess results
-set.seed(1025)
-permutest(bray_disp_Jac, 
-          permutations = how(nperm=10000))
-# Show me a plot
-plot(bray_disp_Jac, main = "Jaccard") 
-```
-
-### Plot
-
-```{r}
-# Bray Curtis
-# Calculate the ordination
-bray_ordination <- pcoa(data_beta_BC_virus)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  color = Group)) + 
-  geom_point(size = 3) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  labs(color = "Group") + 
-  ggtitle("Bray-Curtis") + 
-  scale_color_manual(values = c("blue4","orange2")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        plot.title = element_markdown())
-  
-plot_bray_Group_BC
-
-
-# Jaccard
-bray_ordination <- pcoa(data_beta_Jac_virus)
-points <- bray_ordination$vectors
-points2 <- cbind(points, meta_test)
-# Get variances for each dimension
-per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
-
-# Plot Group
-set.seed(10)
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  color = Group)) + 
-  geom_point(size = 3) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  labs(color = "Group") + 
-  ggtitle("Jaccard") + 
-  scale_color_manual(values = c("blue4","orange2")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        legend.position = "none",
-        plot.title = element_markdown())
-  
-plot_bray_Group_Jac
-
-
-(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "a", 
-                             title = "Wild v. *ex-situ* mt. tapirs (Virus)") & 
-  theme(plot.tag = element_text(size = 25, face = "bold"),
-        plot.tag.position = c(0.02, 1.02), 
-        plot.title= element_markdown()) 
-```
-
 # Malayan Calf samples over time
 
 ### Set–up variables and data
 
 ```{r}
-# Grab the fastq_file names
-meta_test <- metadata %>% 
+# Grab the Malayan samples and change the date to something I can graph
+meta_test <- metadata_dcs %>% 
   filter(Tapir %in% c("Malayan")) %>% 
   mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
   mutate(months_since_start = (time_length(interval(min(Date_collected), Date_collected), unit = "months") + 0.76))
 
-# The abundance tables
-Selected_bac <- abund_spec_bac_rare[row.names(abund_spec_bac_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_arch <- abund_spec_arch_rare[row.names(abund_spec_arch_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_fun <- abund_spec_fun_rare[row.names(abund_spec_fun_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
+
+# The abundance tables for Malayan tapirs
+abund_bac_Mal_rare <- abund_bac_dcs_rare[row.names(abund_bac_dcs_rare) %in% meta_test$Fastq_name, ]
+
+abund_arch_Mal_rare <- abund_arch_dcs_rare[row.names(abund_arch_dcs_rare) %in% meta_test$Fastq_name, ]
+
+abund_fun_Mal_rare <- abund_fun_dcs_rare[row.names(abund_fun_dcs_rare) %in% meta_test$Fastq_name, ] 
+
 
 # Distance matrices
-data_beta_BC_bac <- beta_get(Selected_bac)
-data_beta_Jac_bac <- beta_get(Selected_bac, method = "jaccard", binary = TRUE)
+data_beta_BC_bac_Mal <- beta_get(abund_bac_Mal_rare)
+data_beta_Jac_bac_Mal <- beta_get(abund_bac_Mal_rare, method = "jaccard", binary = TRUE)
 
-data_beta_BC_arch <- beta_get(Selected_arch)
-data_beta_Jac_arch <- beta_get(Selected_arch, method = "jaccard", binary = TRUE)
+data_beta_BC_arch_Mal <- beta_get(abund_arch_Mal_rare)
+data_beta_Jac_arch_Mal <- beta_get(abund_arch_Mal_rare, method = "jaccard", binary = TRUE)
 
-data_beta_BC_fun <- beta_get(Selected_fun)
-data_beta_Jac_fun <- beta_get(Selected_fun, method = "jaccard", binary = TRUE)
+data_beta_BC_fun_Mal <- beta_get(abund_fun_Mal_rare)
+data_beta_Jac_fun_Mal <- beta_get(abund_fun_Mal_rare, method = "jaccard", binary = TRUE)
 ```
 
 ## Plot
 
+### Bacteria
+
 ```{r}
 # Bray Curtis
 # Calculate the ordination
-bray_ordination <- pcoa(data_beta_BC_bac)
+bray_ordination <- pcoa(data_beta_BC_bac_Mal)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -824,17 +579,17 @@ plot_bray_Group_BC <- ggplot(points2,
   
 plot_bray_Group_BC
 
-ggsave(file = "../Images/MATC_Beta_time.png", 
-        units = "in",
-        height = 3.6,
-        width = 6)
-ggsave(file = "../Images/MATC_Beta_time.svg", 
-        units = "in",
-        height = 3.6,
-        width = 6)
+# ggsave(file = "../Images/MATC_Beta_time.png", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+# ggsave(file = "../Images/MATC_Beta_time.svg", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
 
 # Jaccard
-bray_ordination <- pcoa(data_beta_Jac_bac)
+bray_ordination <- pcoa(data_beta_Jac_bac_Mal)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -845,20 +600,181 @@ plot_bray_Group_Jac <- ggplot(points2,
                               aes(x = months_since_start, 
                                   y = Axis.1, 
                                   color = Animal_Code)) + 
-  geom_point(size = 3) +
+  geom_point(size = 2) +
 #  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   scale_x_continuous(breaks = seq(0,10, by = 1), minor_breaks = NULL) + 
   labs(color = "Group") + 
   ggtitle("Jaccard") + 
   scale_color_manual(values = c("#00bfc4","#ff64b0", "black")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
         legend.position = "none",
-        plot.title = element_markdown())
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
+  
+plot_bray_Group_Jac
+
+(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 25, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
+```
+
+### Archaea
+
+```{r}
+# Bray Curtis
+# Calculate the ordination
+bray_ordination <- pcoa(data_beta_BC_arch_Mal)
+points <- bray_ordination$vectors
+points2 <- cbind(points, meta_test)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_BC <- ggplot(points2, 
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+  # geom_smooth(method = "auto", color = "red", se = FALSE) + 
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  scale_x_continuous(breaks = seq(0,10, by = 1), minor_breaks = NULL) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  labs(color = "Group") + 
+  ggtitle("Bray-Curtis") + 
+  scale_color_manual(values = c("#00bfc4","#ff64b0", "black")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
+  
+plot_bray_Group_BC
+
+# ggsave(file = "../Images/MATC_Beta_time.png", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+# ggsave(file = "../Images/MATC_Beta_time.svg", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+
+# Jaccard
+bray_ordination <- pcoa(data_beta_Jac_arch_Mal)
+points <- bray_ordination$vectors
+points2 <- cbind(points, meta_test)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_Jac <- ggplot(points2, 
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  scale_x_continuous(breaks = seq(0,10, by = 1), minor_breaks = NULL) + 
+  labs(color = "Group") + 
+  ggtitle("Jaccard") + 
+  scale_color_manual(values = c("#00bfc4","#ff64b0", "black")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
+        legend.position = "none",
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
+  
+plot_bray_Group_Jac
+
+(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 25, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
+```
+
+### Fungi
+
+```{r}
+# Bray Curtis
+# Calculate the ordination
+bray_ordination <- pcoa(data_beta_BC_fun_Mal)
+points <- bray_ordination$vectors
+points2 <- cbind(points, meta_test)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_BC <- ggplot(points2, 
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+  # geom_smooth(method = "auto", color = "red", se = FALSE) + 
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  scale_x_continuous(breaks = seq(0,10, by = 1), minor_breaks = NULL) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  labs(color = "Group") + 
+  ggtitle("Bray-Curtis") + 
+  scale_color_manual(values = c("#00bfc4","#ff64b0", "black")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
+  
+plot_bray_Group_BC
+
+# ggsave(file = "../Images/MATC_Beta_time.png", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+# ggsave(file = "../Images/MATC_Beta_time.svg", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+
+# Jaccard
+bray_ordination <- pcoa(data_beta_Jac_fun_Mal)
+points <- bray_ordination$vectors
+points2 <- cbind(points, meta_test)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
+
+# Plot Group
+plot_bray_Group_Jac <- ggplot(points2, 
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  scale_x_continuous(breaks = seq(0,10, by = 1), minor_breaks = NULL) + 
+  labs(color = "Group") + 
+  ggtitle("Jaccard") + 
+  scale_color_manual(values = c("#00bfc4","#ff64b0", "black")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
+        legend.position = "none",
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
   
 plot_bray_Group_Jac
 
@@ -874,37 +790,38 @@ plot_bray_Group_Jac
 ### Set-up variables and data
 
 ```{r}
-# Grab the fastq_file names
-meta_test <- metadata %>% 
+# Grab the lowland samples and change the date to something I can graph
+meta_test <- metadata_dcs %>% 
   filter(Tapir %in% c("Lowland")) %>% 
   mutate(Date_collected = as.Date(.$Date_collected, format = "%m/%d/%Y")) %>% 
-  mutate(months_since_start = (time_length(interval(min(Date_collected), Date_collected), unit = "months") + 1))
+  mutate(months_since_start = (time_length(interval(min(Date_collected), Date_collected), unit = "months") + 0.613))
 
 # The abundance tables
-Selected_bac <- abund_spec_bac_rare[row.names(abund_spec_bac_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_arch <- abund_spec_arch_rare[row.names(abund_spec_arch_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_fun <- abund_spec_fun_rare[row.names(abund_spec_fun_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
+abund_bac_low_rare <- abund_bac_dcs_rare[row.names(abund_bac_dcs_rare) %in% meta_test$Fastq_name, ] 
+
+abund_arch_low_rare <- abund_arch_dcs_rare[row.names(abund_arch_dcs_rare) %in% meta_test$Fastq_name, ] 
+
+abund_fun_low_rare <- abund_fun_dcs_rare[row.names(abund_fun_dcs_rare) %in% meta_test$Fastq_name, ] 
 
 # Distance matrices
-data_beta_BC_bac <- beta_get(Selected_bac)
-data_beta_Jac_bac <- beta_get(Selected_bac, method = "jaccard", binary = TRUE)
+data_beta_BC_bac_low <- beta_get(abund_bac_low_rare)
+data_beta_Jac_bac_low <- beta_get(abund_bac_low_rare, method = "jaccard", binary = TRUE)
 
-data_beta_BC_arch <- beta_get(Selected_arch)
-data_beta_Jac_arch <- beta_get(Selected_arch, method = "jaccard", binary = TRUE)
+data_beta_BC_arch_low <- beta_get(abund_arch_low_rare)
+data_beta_Jac_arch_low <- beta_get(abund_arch_low_rare, method = "jaccard", binary = TRUE)
 
-data_beta_BC_fun <- beta_get(Selected_fun)
-data_beta_Jac_fun <- beta_get(Selected_fun, method = "jaccard", binary = TRUE)
+data_beta_BC_fun_low <- beta_get(abund_fun_low_rare)
+data_beta_Jac_fun_low <- beta_get(abund_fun_low_rare, method = "jaccard", binary = TRUE)
 ```
 
 ## Plot
 
+### bacteria
+
 ```{r}
 # Bray Curtis
 # Calculate the ordination
-bray_ordination <- pcoa(data_beta_BC_bac)
+bray_ordination <- pcoa(data_beta_BC_bac_low)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -932,17 +849,17 @@ plot_bray_Group_BC <- ggplot(points2,
   
 plot_bray_Group_BC
 
-ggsave(file = "../Images/LTC_Beta_time.png", 
-        units = "in",
-        height = 3.6,
-        width = 6)
-ggsave(file = "../Images/LTC_Beta_time.svg", 
-        units = "in",
-        height = 3.6,
-        width = 6)
+# ggsave(file = "../Images/LTC_Beta_time.png", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+# ggsave(file = "../Images/LTC_Beta_time.svg", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
 
 # Jaccard
-bray_ordination <- pcoa(data_beta_Jac_bac)
+bray_ordination <- pcoa(data_beta_Jac_bac_low)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -953,56 +870,36 @@ plot_bray_Group_Jac <- ggplot(points2,
                               aes(x = months_since_start, 
                                   y = Axis.1, 
                                   color = Animal_Code)) + 
-  geom_point(size = 3) +
+  geom_point(size = 2) +
 #  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   labs(color = "Group") + 
   ggtitle("Jaccard") + 
   scale_color_manual(values = c("#c77cff","#00c08b")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
         legend.position = "none",
-        plot.title = element_markdown())
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
   
 plot_bray_Group_Jac
+
+(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 25, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
 ```
 
-# Beta diversity of all Animals
-
-### Set-up variables and data
-
-```{r}
-# 
-meta_test <- metadata %>% 
-  filter(Sample_ID %in% c("WMT1_0","WMT2_0","WMT3_0","WMT4_0","WMT5_0","WMT6_0","LTC_27","MaTC_17","ZMT1_0","ZMT2_0","ZMT3_0","ZMT4_0","ZMT5_0","ZMT6_0","ZMT7_0","LTD_0","MaTD_0","MaTS_0"))
-# The abundance tables
-Selected_bac <- abund_spec_bac_rare[row.names(abund_spec_bac_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_arch <- abund_spec_arch_rare[row.names(abund_spec_arch_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-Selected_fun <- abund_spec_fun_rare[row.names(abund_spec_fun_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
-
-# Distance matrices
-data_beta_BC_bac <- beta_get(Selected_bac)
-data_beta_Jac_bac <- beta_get(Selected_bac, method = "jaccard", binary = TRUE)
-
-data_beta_BC_arch <- beta_get(Selected_arch)
-data_beta_Jac_arch <- beta_get(Selected_arch, method = "jaccard", binary = TRUE)
-
-data_beta_BC_fun <- beta_get(Selected_fun)
-data_beta_Jac_fun <- beta_get(Selected_fun, method = "jaccard", binary = TRUE)
-```
-
-## Plot
+### Archaea
 
 ```{r}
 # Bray Curtis
 # Calculate the ordination
-bray_ordination <- pcoa(data_beta_BC_bac)
+bray_ordination <- pcoa(data_beta_BC_arch_low)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -1010,30 +907,37 @@ per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100
 
 # Plot Group
 plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  color = Group)) + 
-  geom_point(size = 3) +
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
   # geom_smooth(method = "auto", color = "red", se = FALSE) + 
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   labs(color = "Group") + 
   ggtitle("Bray-Curtis") + 
-  # scale_color_manual(values = c("#c77cff","#00c08b")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        plot.title = element_markdown())
+  scale_color_manual(values = c("#c77cff","#00c08b")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
   
 plot_bray_Group_BC
 
-ggsave(file = "../Images/Supp_Fig_10.svg")
-ggsave(file = "../Images/Supp_Fig_10.png")
+# ggsave(file = "../Images/LTC_Beta_time.png", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+# ggsave(file = "../Images/LTC_Beta_time.svg", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
 
 # Jaccard
-bray_ordination <- pcoa(data_beta_Jac_bac)
+bray_ordination <- pcoa(data_beta_Jac_arch_low)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -1041,51 +945,77 @@ per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100
 
 # Plot Group
 plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  color = Specific_Group)) + 
-  geom_point(size = 3) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   labs(color = "Group") + 
   ggtitle("Jaccard") + 
-  # scale_color_manual(values = c("#c77cff","#00c08b")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
+  scale_color_manual(values = c("#c77cff","#00c08b")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
         legend.position = "none",
-        plot.title = element_markdown())
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
   
 plot_bray_Group_Jac
+
+(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 25, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
 ```
 
-# Testing select Calf Samples
-
-## Archaea MaTC Jaccard
+### Fungi
 
 ```{r}
-# Metadata 
-meta_test <- metadata %>% 
-  filter(Animal_Code %in% c("MaTC","MaTD")) 
-#   arrange(Fastq_name) %>% 
-#   as.data.frame()
-# row.names(meta_test) <- meta_test$Fastq_name
+# Bray Curtis
+# Calculate the ordination
+bray_ordination <- pcoa(data_beta_BC_fun_low)
+points <- bray_ordination$vectors
+points2 <- cbind(points, meta_test)
+# Get variances for each dimension
+per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
+# Plot Group
+plot_bray_Group_BC <- ggplot(points2, 
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+  # geom_smooth(method = "auto", color = "red", se = FALSE) + 
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  labs(color = "Group") + 
+  ggtitle("Bray-Curtis") + 
+  scale_color_manual(values = c("#c77cff","#00c08b")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
+        plot.title = element_markdown()) + 
+  xlab("Calf age (month of life)")
+  
+plot_bray_Group_BC
 
-Selected_arch <- abund_spec_arch_rare[row.names(abund_spec_arch_rare) %in% meta_test$Fastq_name, ] %>% 
-  .[, colSums(. != 0) != 0] # remove species that have 0 total reads counts in the new data set
+# ggsave(file = "../Images/LTC_Beta_time.png", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
+# ggsave(file = "../Images/LTC_Beta_time.svg", 
+#         units = "in",
+#         height = 3.6,
+#         width = 6)
 
-# Same order? - YES
-identical(rownames(meta_test), rownames(Selected_arch))
-
-# Calculate the distance
-data_beta_Jac_arch <- beta_get(Selected_arch, method = "jaccard", binary = TRUE)
-
-# Plot
 # Jaccard
-bray_ordination <- pcoa(data_beta_Jac_arch)
+bray_ordination <- pcoa(data_beta_Jac_fun_low)
 points <- bray_ordination$vectors
 points2 <- cbind(points, meta_test)
 # Get variances for each dimension
@@ -1093,88 +1023,29 @@ per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100
 
 # Plot Group
 plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  color = Group)) + 
-  geom_point(size = 3) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
+                              aes(x = months_since_start, 
+                                  y = Axis.1, 
+                                  color = Animal_Code)) + 
+  geom_point(size = 2) +
+#  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
+  ylab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
   labs(color = "Group") + 
   ggtitle("Jaccard") + 
-  scale_color_manual(values = c("blue4","orange2")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
+  scale_color_manual(values = c("#c77cff","#00c08b")) + 
+  theme(title = element_text(size = 12),
+        axis.title = element_text(size = 12), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 12), 
+        legend.text = element_text(size = 12),
         legend.position = "none",
         plot.title = element_markdown()) + 
-  geom_text_repel(
-    aes(label = Sample_ID),
-    size = 5,
-    box.padding = unit(0.4, "lines"),
-    point.padding = unit(0.3, "lines"),
-    force = 1,   # pushes labels away from points
-    min.segment.length = 0 ) # ensures a segment is always drawn)
+  xlab("Calf age (month of life)")
   
 plot_bray_Group_Jac
 
-
-# Different dimensions
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.3, 
-                                  color = Group)) + 
-  geom_point(size = 3) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.3 [", round(per_variance[3], 2), "%]")) +
-  labs(color = "Group") + 
-  ggtitle("Jaccard") + 
-  scale_color_manual(values = c("blue4","orange2")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        legend.position = "none",
-        plot.title = element_markdown()) + 
-  geom_text_repel(
-    aes(label = Sample_ID),
-    size = 5,
-    box.padding = unit(0.4, "lines"),
-    point.padding = unit(0.3, "lines"),
-    force = 1,   # pushes labels away from points
-    min.segment.length = 0 ) # ensures a segment is always drawn)
-  
-plot_bray_Group_Jac
-
-
-# Different dimensions
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.4, 
-                                  color = Group)) + 
-  geom_point(size = 3) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.4 [", round(per_variance[4], 2), "%]")) +
-  labs(color = "Group") + 
-  ggtitle("Jaccard") + 
-  scale_color_manual(values = c("blue4","orange2")) + 
-  theme(title = element_text(size = 18),
-        axis.title = element_text(size = 16), 
-        axis.text = element_text(size = 14), 
-        legend.title = element_text(size = 15), 
-        legend.text = element_text(size = 13),
-        legend.position = "none",
-        plot.title = element_markdown()) + 
-  geom_text_repel(
-    aes(label = Sample_ID),
-    size = 5,
-    box.padding = unit(0.4, "lines"),
-    point.padding = unit(0.3, "lines"),
-    force = 1,   # pushes labels away from points
-    min.segment.length = 0 ) # ensures a segment is always drawn)
-  
-plot_bray_Group_Jac
-
+(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 25, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
 ```
