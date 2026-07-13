@@ -215,7 +215,7 @@ Maaslin2(abund_virus_mt_select,
          metadata_mt_select, 
          '../Data/Maaslin2_outs_rare/No rare select/Viruses', # output location
          min_abundance = 0,
-         min_prevalence = 0.1,
+         min_prevalence = 0.25,
          max_significance = 0.05, #qval threshold for significance
          analysis_method = 'LM',
          correction = "BH",
