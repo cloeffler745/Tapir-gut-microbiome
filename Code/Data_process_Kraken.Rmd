@@ -150,12 +150,36 @@ abund_fun_mt_select_rare %>%
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
 ```
 
+For viruses (no rarefaction needed, going straight to differential abundance analysis)
+
+```{r}
+abund_virus_mt_select <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
+                                             "33_S25", "35_S27", "37_S29", "48_S40",
+                                             "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
+```
+
+For plants (no rarefaction needed, going straight to differential abundance analysis)
+
+```{r}
+abund_plant_mt_select <- kraken_130_species %>% 
+  filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
+                                             "33_S25", "35_S27", "37_S29", "48_S40",
+                                             "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
+  select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Plants"])) %>% 
+  .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
+```
+
 Check that the order of samples in the data frame and the metadata are in the same order
 
 ```{r}
 identical(rownames(abund_bac_mt_select_rare), rownames(metadata_mt_select))
 identical(rownames(abund_arch_mt_select_rare), rownames(metadata_mt_select))
 identical(rownames(abund_fun_mt_select_rare), rownames(metadata_mt_select))
+identical(rownames(abund_virus_mt_select), rownames(metadata_mt_select))
+identical(rownames(abund_plant_mt_select), rownames(metadata_mt_select))
 ```
 
 ## *Ex-situ* mountain tapirs only (across time)
