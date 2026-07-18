@@ -1,10 +1,12 @@
 # Boiler Plate
 
 ```{r}
-library(Maaslin2)
+library(Maaslin2) # Maaslin2()
 library(vroom)
 library(ggrepel)
 library(ggtext)
+library(microbiome) # core_members()
+library(hilldiv) # tss()
 ```
 
 # Function
@@ -26,8 +28,8 @@ volcano_plot <- function(maaslin_file, output_path, output_name, cutoff = 0.05, 
   taxa$Significance <- "FDR<1e-2, Increased Abundance"
   taxa[ sigUp, "Significance"] <- "FDR<0.05, Increased Abundance"
   taxa[ sigDown, "Significance"] <- "FDR<0.05, Decreased Abundance"
-  taxa[ nonSigUp, "Significance"] <- "Less Significant, Increased Abundance"
-  taxa[ nonSigDown, "Significance"] <- "Less Significant, Decreased Abundance"
+  taxa[ nonSigUp, "Significance"] <- "FDR>0.05, Increased Abundance"
+  taxa[ nonSigDown, "Significance"] <- "FDR>0.05, Decreased Abundance"
   
   
   # Make the volcano plot ------------------------------------------------------
@@ -44,18 +46,19 @@ volcano_plot <- function(maaslin_file, output_path, output_name, cutoff = 0.05, 
     ylab(expression('-Log'[10]*'P-Value')) +
     ggtitle(Plot_title) +
     theme_bw() + 
-    theme(text = element_text(size = 20),
-          legend.position = "right", 
-          legend.text = element_text(size = 15),
-          legend.title = element_text(size = 15),
-          legend.key.height=unit(2, "cm"),
+    guides(fill = guide_legend(nrow = 2, ncol = 2, byrow = TRUE)) +
+    theme(text = element_text(size = 12),
+          legend.position = "bottom", 
+          legend.text = element_text(size = 10),
+          legend.title = element_blank(), # element_text(size = 12),
+          #legend.key.height=unit(2, "cm"),
           plot.title= element_markdown(),
           # panel.background = element_rect(fill = "black")
     ) +
     geom_text_repel(
       data = subset(taxa, feature %in% chosen), # qval < cutoff), # Select the dots that get labels
       aes(label = symbol),
-      size = 5,
+      size = 3,
       box.padding = unit(0.4, "lines"),
       point.padding = unit(0.3, "lines"),
       max.overlaps = 25,
@@ -92,16 +95,45 @@ volcano_plot <- function(maaslin_file, output_path, output_name, cutoff = 0.05, 
 }
 ```
 
-# Wild v. Ex-situ test
+# Apply abundance and prevalence filters
+
+```{r}
+# Get taxa proportions
+data_to_filter <- kraken_130_species %>% # Only do selected mt samples \/
+  filter(rownames(kraken_130_species) %in% c("1_S1", "10_S5", "19_S12", "2_S2", "31_S23",
+                                             "33_S25", "35_S27", "37_S29", "48_S40",
+                                             "49_S41", "6_S3", "87_S105", "9_S4")) %>%
+  t() %>% 
+  tss()
+
+# Check that this worked (samples should sum to 1)
+data_to_filter %>% 
+  as.data.frame() %>% 
+  summarise(across(everything(), ~ sum(., na.rm = TRUE)))
+
+# Get the list of microbes that passed filtering thresholds
+microbes_pass_filter <- core_members(data_to_filter, 
+                                     detection = 0.00005, 
+                                     prevalence = 0.1)
+
+# No longer need the table of values
+rm(data_to_filter)
+```
+
+# Wild v. select *Ex-situ*
 
 ## For Bacteria
 
 ```{r}
-Maaslin2(abund_bac_mt_select, 
+# Select the microbes that passed filtering for analysis
+Mas_data <- abund_bac_mt_select %>%
+  select(any_of(microbes_pass_filter))
+
+Maaslin2(Mas_data, 
          metadata_mt_select, 
-         '../Data/Maaslin2_outs_rare/No rare select/Bacteria', # output location
+         '../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria', # output location
          min_abundance = 0,
-         min_prevalence = 0.1,
+         min_prevalence = 0, # Microbes have already been filtered by prevalence and abundance
          max_significance = 0.05, #qval threshold for significance
          analysis_method = 'LM',
          correction = "BH",
@@ -115,8 +147,8 @@ Maaslin2(abund_bac_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Bacteria/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/No rare select/Bacteria",
+volc_bac <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria",
              "Bacteria_only", Plot_title = "Wild v. *ex-situ* (Bacteria)",
              chosen = c("Vibrio.parahaemolyticus","Salmonella.bongori","Shigella.flexneri", 
                         "Escherichia.coli", "Veillonella.dispar","Fibrobacter.succinogenes",
@@ -126,7 +158,7 @@ volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Bacteria/all_results.tsv
                         "Pseudomonas.sp..Nvir","Acetoanaerobium.sticklandii"))
 
 # For presentation
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Bacteria/all_results.tsv", 
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_results.tsv", 
              "../Images/Marcos",
              "Volc_Bacteria", Plot_title = "Wild v. *ex-situ* (Bacteria)",
              chosen = c("Vibrio.parahaemolyticus","Shigella.flexneri", 
@@ -137,14 +169,45 @@ volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Bacteria/all_results.tsv
                         "Nitratifractor.salsuginis", "Paralysiella.testudinis"))
 ```
 
+Make the big figure (now that we have all the parts
+
+```{r}
+
+design <- "AABBCC
+DDDFFF
+EEEFFF"
+
+(p1 + p2 + p3 + plot_bac_Group_Jac + plot_bac_Group_BC + volc_bac) + 
+  plot_layout(design = design) + 
+  plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
+
+
+
+# 
+# ((p1 | p2 | p3)/(plot_bac_Group_Jac / plot_bac_Group_BC)/(volc_bac)) + 
+#   plot_annotation(tag_levels = "A", 
+#                              title = "") & 
+#   theme(plot.tag = element_text(size = 20, face = "bold"),
+#         plot.tag.position = c(0.02, 1.02), 
+#         plot.title= element_markdown()) 
+```
+
 ## For Archaea
 
 ```{r}
-Maaslin2(abund_arch_mt_select, 
+# TSS normaliza abundance matrix, so that min_abund flag in Maaslin2 actually does min_relative_abundance
+Mas_data <- abund_arch_mt_select %>%
+  select(any_of(microbes_pass_filter))
+
+Maaslin2(Mas_data, 
          metadata_mt_select, 
-         '../Data/Maaslin2_outs_rare/No rare select/Archaea', # output location
+         '../Data/Maaslin2_outs_rare/No rare select min detect/Archaea', # output location
          min_abundance = 0,
-         min_prevalence = 0.1,
+         min_prevalence = 0, # Microbes have already been filtered by prevalence and abundance
          max_significance = 0.05, #qval threshold for significance
          analysis_method = 'LM',
          correction = "BH",
@@ -158,8 +221,8 @@ Maaslin2(abund_arch_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Archaea/all_results.tsv",
-             "../Data/Maaslin2_outs_rare/No rare select/MountainWvC/Archaea",
+volc_arch <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_results.tsv",
+             "../Data/Maaslin2_outs_rare/No rare select min detect/MountainWvC/Archaea",
              "Archaea_only", Plot_title = "Wild v. *ex-situ* (Archaea)",
              chosen = c("Methanoculleus.bourgensis","Methanofollis.aquaemaris","Methanofollis.liminatans",
                         "Methanolobus.zinderi","Methanoregula.boonei",
@@ -172,7 +235,7 @@ volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Archaea/all_results.tsv"
 # "Methanosarcina.sp..WH1", "Methanobrevibacter.sp..AbM4", "Methanobrevibacter.sp..YE315", "Methanolobus.sp..WCC4"
 
 # For presentation
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Archaea/all_results.tsv",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_results.tsv",
              "../Images/Marcos",
              "Volc_Archaea", Plot_title = "Wild v. *ex-situ* (Archaea)",
              chosen = c("Methanogenium.sp..S4BF","Methanoculleus.bourgensis",
@@ -182,14 +245,42 @@ volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Archaea/all_results.tsv"
 
 ```
 
+Make the big plot (now that we have all the pieces)
+
+```{r}
+# ((p4 | p5 | p6)/(plot_arch_Group_Jac | plot_arch_Group_BC)/(volc_arch)) + 
+#   plot_annotation(tag_levels = "A", 
+#                              title = "") & 
+#   theme(plot.tag = element_text(size = 20, face = "bold"),
+#         plot.tag.position = c(0.02, 1.02), 
+#         plot.title= element_markdown()) 
+
+design <- "AABBCC
+DDDEEE
+FFFFFF
+FFFFFF"
+
+
+(p4 + p5 + p6 + plot_arch_Group_Jac + plot_arch_Group_BC + volc_arch) + 
+  plot_layout(design = design) + 
+  plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
+```
+
 ## For Fungi
 
 ```{r}
-Maaslin2(abund_fun_mt_select, 
+Mas_data <- abund_fun_mt_select %>% 
+  select(any_of(microbes_pass_filter))
+
+Maaslin2(Mas_data, 
          metadata_mt_select, 
-         '../Data/Maaslin2_outs_rare/No rare select/Fungi', # output location
+         '../Data/Maaslin2_outs_rare/No rare select min detect/Fungi', # output location
          min_abundance = 0,
-         min_prevalence = 0.1,
+         min_prevalence = 0, # Microbes have already been filtered by prevalence and abundance
          max_significance = 0.05, #qval threshold for significance
          analysis_method = 'LM',
          correction = "BH",
@@ -203,19 +294,34 @@ Maaslin2(abund_fun_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Fungi/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/No rare select/Fungi",
+volc_fun <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Fungi/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select min detect/Fungi",
              "Fungi_only")
+volc_fun
+```
+
+Make the big plot (now that we have all the pieces)
+
+```{r}
+((p7 | p8 | p9)/(plot_fun_Group_Jac | plot_fun_Group_BC)) + 
+  plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown()) 
 ```
 
 ## For Virus
 
 ```{r}
-Maaslin2(abund_virus_mt_select, 
+Mas_data <- abund_virus_mt_select %>% 
+  select(any_of(microbes_pass_filter))
+
+Maaslin2(Mas_data, 
          metadata_mt_select, 
-         '../Data/Maaslin2_outs_rare/No rare select/Viruses', # output location
+         '../Data/Maaslin2_outs_rare/No rare select min detect/Viruses', # output location
          min_abundance = 0,
-         min_prevalence = 0.25,
+         min_prevalence = 0, # Microbes have already been filtered by prevalence and abundance
          max_significance = 0.05, #qval threshold for significance
          analysis_method = 'LM',
          correction = "BH",
@@ -229,19 +335,22 @@ Maaslin2(abund_virus_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Viruses/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/No rare select/Viruses",
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Viruses/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select min detect/Viruses",
              "Viruses_only", chosen = c("Kratosvirus.quantuckense","Brigitvirus.brigit","Eponavirus.epona"))
 ```
 
 ## For plants
 
 ```{r}
-Maaslin2(abund_plant_mt_select, 
+Mas_data <- abund_plant_mt_select %>% 
+  select(any_of(microbes_pass_filter))
+
+Maaslin2(Mas_data, 
          metadata_mt_select, 
-         '../Data/Maaslin2_outs_rare/No rare select/Plants', # output location
+         '../Data/Maaslin2_outs_rare/No rare select min detect/Plants', # output location
          min_abundance = 0,
-         min_prevalence = 0.1,
+         min_prevalence = 0, # Microbes have already been filtered by prevalence and abundance
          max_significance = 0.05, #qval threshold for significance
          analysis_method = 'LM',
          correction = "BH",
@@ -255,7 +364,7 @@ Maaslin2(abund_plant_mt_select,
 ### Make and save the volcano plots
 
 ```{r}
-volcano_plot("../Data/Maaslin2_outs_rare/No rare select/Plants/all_results.tsv", 
-             "../Data/Maaslin2_outs_rare/No rare select/Plants",
-             "Plants_only")
+volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Plants/all_results.tsv", 
+             "../Data/Maaslin2_outs_rare/No rare select min detect/Plants",
+             "Plants_only") 
 ```
