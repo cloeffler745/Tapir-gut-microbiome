@@ -174,8 +174,8 @@ Make the big figure (now that we have all the parts
 ```{r}
 
 design <- "AABBCC
-DDDFFF
-EEEFFF"
+DDFFFF
+EEFFFF"
 
 (p1 + p2 + p3 + plot_bac_Group_Jac + plot_bac_Group_BC + volc_bac) + 
   plot_layout(design = design) + 

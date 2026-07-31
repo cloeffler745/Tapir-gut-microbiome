@@ -38,12 +38,48 @@ metadata_mt_select$rich_fun <- specnumber(abund_fun_mt_select_rare)
 metadata_mt_select$shannon_fun <- diversity(abund_fun_mt_select_rare, index = "shannon")
 metadata_mt_select$simpson_fun <- diversity(abund_fun_mt_select_rare, index = "simpson")
 
-# Set color vector
-mt_select_col <- c("Wild" = "#99FF33", "Ex-situ" = "#A6A6A6")
 
 ```
 
 # Mountain tapir Wild v. *Ex-situ* alpha diversity assessment (select samples)
+
+## Plot function
+
+```{r}
+# Plot function for mountain tapirs
+plot_mt_select <- function (data, variable, x.ax, legend.pos = "none") {
+  
+  mt_select_col <- c("Wild" = "#99FF33", "Ex-situ" = "#A6A6A6")
+  
+  ggplot(data = data, 
+         aes(x = Specific_Group, 
+             y = .data[[variable]],
+             fill = Specific_Group)) + 
+    geom_boxplot() + 
+    geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
+    theme_bw() + 
+    scale_fill_manual(name = "Group", values = mt_select_col,
+                      breaks = c("Wild", "Ex-situ"),
+                      labels = c(
+                        "Wild" = "Wild",
+                        "Ex-situ" = expression(italic("Ex-situ"))
+                      )) +
+    theme(
+      title = element_text(size = 12),
+      axis.title = element_text(size = 12), 
+      axis.title.x = element_blank(),
+      axis.text = element_text(size = 10),
+      axis.text.x = element_blank(),
+      legend.title = element_text(size = 12), 
+      legend.text = element_text(size = 12), 
+      legend.position = legend.pos,
+      plot.title = element_markdown()
+    ) + 
+    labs(title = "", x = "Group") + 
+    ylab(x.ax)
+}
+
+```
 
 ## Bacteria
 
@@ -58,31 +94,7 @@ wilcox.test(rich_bac ~ Specific_Group,
             data = metadata_mt_select)
 
 # Create box plot
-p1 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = rich_bac, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) +
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
+p1 <-plot_mt_select(metadata_mt_select, "rich_bac", "Richness")
 p1
 
 
@@ -93,31 +105,7 @@ p1
 wilcox.test(shannon_bac ~ Specific_Group, 
             data = metadata_mt_select)
 # Create box plot
-p2 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = shannon_bac, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "bottom",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Shannon", x = "Group") + 
-  ylab("Shannon")
+p2 <- plot_mt_select(metadata_mt_select, "shannon_bac", "Shannon", "bottom")
 p2
 
 # Simpson
@@ -127,43 +115,18 @@ p2
 wilcox.test(simpson_bac ~ Specific_Group, 
             data = metadata_mt_select)
 # Create box plot
-p3 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = simpson_bac, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Simpson", x = "Group") + 
-  ylab("Simpson")
+p3 <- plot_mt_select(metadata_mt_select, "simpson_bac", "Simpson")
 p3
 ```
 
 ### Make and save the big plot
 
 ```{r}
-(p1 | p2 | p3) + plot_annotation(tag_levels = "A", 
-                             title = "") & 
+(p1 | p2 | p3) + plot_annotation(tag_levels = "A",
+                             title = "") &
   theme(plot.tag = element_text(size = 20, face = "bold"),
-        plot.tag.position = c(0.02, 1.02), 
-        plot.title= element_markdown()) 
-
+        plot.tag.position = c(0.02, 1.02),
+        plot.title= element_markdown())
 
 # ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/alpha_bac_species_rare.pdf",
 #        width=6,
@@ -189,32 +152,8 @@ wilcox.test(rich_arch ~ Specific_Group,
             data = metadata_mt_select)
 
 # Create box plot
-p1 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = rich_arch, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
-p1
+p4 <- plot_mt_select(metadata_mt_select, "rich_arch", "Richness")
+p4
 
 
 # Shannon
@@ -224,32 +163,8 @@ p1
 wilcox.test(shannon_arch ~ Specific_Group, 
             data = metadata_mt_select)
 # Create box plot
-p2 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = shannon_arch, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "bottom",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Shannon", x = "Group") + 
-  ylab("Shannon")
-p2
+p5 <- plot_mt_select(metadata_mt_select, "shannon_arch", "Shannon", "bottom")
+p5
 
 # Simpson
 
@@ -258,38 +173,14 @@ p2
 wilcox.test(simpson_arch ~ Specific_Group, 
             data = metadata_mt_select)
 # Create box plot
-p3 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = simpson_arch, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Simpson", x = "Group") + 
-  ylab("Simpson")
-p3
+p6 <- plot_mt_select(metadata_mt_select, "simpson_arch", "Simpson")
+p6
 ```
 
 ### Make and save the big plot
 
 ```{r}
-(p1 | p2 | p3) + plot_annotation(tag_levels = "A", 
+(p4 | p5 | p6) + plot_annotation(tag_levels = "A", 
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
@@ -320,32 +211,8 @@ wilcox.test(rich_fun ~ Specific_Group,
             data = metadata_mt_select)
 
 # Create box plot
-p1 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = rich_fun, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Richness", x = "Group") + 
-  ylab("Richness")
-p1
+p7 <- plot_mt_select(metadata_mt_select, "rich_fun", "Richness")
+p7
 
 
 # Shannon
@@ -355,32 +222,8 @@ p1
 wilcox.test(shannon_fun ~ Specific_Group, 
             data = metadata_mt_select)
 # Create box plot
-p2 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = shannon_fun, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "bottom",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Shannon", x = "Group") + 
-  ylab("Shannon")
-p2
+p8 <- plot_mt_select(metadata_mt_select, "shannon_fun", "Shannon", "bottom")
+p8
 
 # Simpson
 
@@ -389,38 +232,14 @@ p2
 wilcox.test(simpson_fun ~ Specific_Group, 
             data = metadata_mt_select)
 # Create box plot
-p3 <- ggplot(data = metadata_mt_select, 
-       aes(x = Specific_Group, y = simpson_fun, 
-           fill = Specific_Group)) + 
-  geom_boxplot() + 
-  geom_jitter(width = 0.2, height = 0, size = 1, color = "black") + 
-  theme_bw() + 
-  scale_fill_manual(name = "Group", values = mt_select_col,
-                    breaks = c("Wild", "Ex-situ"),
-                    labels = c(
-                      "Wild" = "Wild",
-                      "Ex-situ" = expression(italic("Ex-situ"))
-                    )) + 
-  theme(
-    title = element_text(size = 16),
-    axis.title = element_text(size = 16), 
-    axis.title.x = element_blank(),
-    axis.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    legend.title = element_text(size = 15), 
-    legend.text = element_text(size = 13), 
-    legend.position = "none",
-    plot.title = element_markdown()
-  ) + 
-  labs(title = "Simpson", x = "Group") + 
-  ylab("Simpson")
-p3
+p9 <- plot_mt_select(metadata_mt_select, "simpson_fun", "Simpson")
+p9
 ```
 
 ### Make and save the big plot
 
 ```{r}
-(p1 | p2 | p3) + plot_annotation(tag_levels = "A", 
+(p7 | p8 | p9) + plot_annotation(tag_levels = "A", 
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
@@ -504,78 +323,78 @@ meta_long <- metadata_mt_exsitu %>%
 
 # Richness
 # bacteria 
-p1 <- plot_mt(data = meta_long, variable = "rich_bac") + 
+p10 <- plot_mt(data = meta_long, variable = "rich_bac") + 
   ylim(11600,12450) + 
   ylab("Species Richness") + 
   xlab("") + 
   ggtitle("Bacteria") 
-p1
+p10
 
 # archaea
-p2 <- plot_mt(data = meta_long, variable = "rich_arch") + 
+p11 <- plot_mt(data = meta_long, variable = "rich_arch") + 
   ylim(400,515) +
   ylab("") + 
   xlab("") + 
   ggtitle("Archaea") 
-p2
+p11
 
 # fungal
-p3 <- plot_mt(data = meta_long, variable = "rich_fun") + 
+p12 <- plot_mt(data = meta_long, variable = "rich_fun") + 
   ylim(115,150) + 
   ylab("") + 
   xlab("") +
   ggtitle("Fungi") 
-p3
+p12
 
 
 # Shannon
 # bacteria 
-p4 <- plot_mt(data = meta_long, variable = "shannon_bac") + 
+p13 <- plot_mt(data = meta_long, variable = "shannon_bac") + 
   ylim(2,8) + 
   ylab("Shannon Diversity") + 
   xlab("") 
-p4
+p13
 
 # archaea
-p5 <- plot_mt(data = meta_long, variable = "shannon_arch") + 
+p14 <- plot_mt(data = meta_long, variable = "shannon_arch") + 
   ylim(2,8) + 
   ylab("") + 
   xlab("") 
-p5
+p14
 
 # fungal
-p6 <- plot_mt(data = meta_long, variable = "shannon_fun") + 
+p15 <- plot_mt(data = meta_long, variable = "shannon_fun") + 
   ylim(2,8) + 
   ylab("") + 
   xlab("") 
-p6
+p15
 
 
 # Simpson
 # bacteria 
-p7 <- plot_mt(data = meta_long, variable = "simpson_bac") + 
+p16 <- plot_mt(data = meta_long, variable = "simpson_bac") + 
   ylim(0.55,1) + 
   ylab("Simpson Diversity") + 
   xlab("") 
-p7
+p16
 
 # archaea
-p8 <- plot_mt(data = meta_long, variable = "simpson_arch") + 
+p17 <- plot_mt(data = meta_long, variable = "simpson_arch") + 
   ylim(0.55,1) + 
   ylab("") + 
   xlab("Date") 
-p8
+p17
 
 # fungal
-p9 <- plot_mt(data = meta_long, variable = "simpson_fun") + 
+p18 <- plot_mt(data = meta_long, variable = "simpson_fun") + 
   ylim(0.55,1) + 
   ylab("") + 
   xlab("") 
-p9
+p18
 
 
 # Mega panel
-((p1 | p2 | p3) / (p4 | p5 | p6 ) / (p7 | p8 | p9)) + 
+((p10 | p11 | p12) / (p13 | p14 | p15 ) / (p16 | p17 | p18)) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -598,7 +417,7 @@ p9
 #        dpi = 96.14)
 
 # The 3 panel figure
-((p4 + ggtitle("Bacteria")) | (p5 + ggtitle("Archaea") + xlab("Date")) | (p6 + ggtitle("Fungi")) ) + 
+((p13 + ggtitle("Bacteria")) | (p14 + ggtitle("Archaea") + xlab("Date")) | (p15 + ggtitle("Fungi")) ) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -686,78 +505,78 @@ plot_Mal(data = meta_long, variable = "shannon_bac")
 
 # Richness
 # Bacteria 
-p1 <- plot_Mal(data = meta_long, variable = "rich_bac") + 
+p19 <- plot_Mal(data = meta_long, variable = "rich_bac") + 
   ylab("Species Richness") + 
   xlab("") + 
   ggtitle("Bacteria") #+ 
   #ylim(9000,12000)
-p1
+p19
 # Archaea 
-p2 <- plot_Mal(data = meta_long, variable = "rich_arch") + 
+p20 <- plot_Mal(data = meta_long, variable = "rich_arch") + 
   ylab("") + 
   xlab("") + 
   ggtitle("Archaea") #+ 
   #ylim(50,400)
-p2
+p20
 # Fungi
-p3 <- plot_Mal(data = meta_long, variable = "rich_fun") + 
+p21 <- plot_Mal(data = meta_long, variable = "rich_fun") + 
   ylab("") + 
   xlab("") + 
   ggtitle("Fungi") + 
   ylim(75,150)
-p3
+p21
 
 
 # Shannon
 # Bacteria 
-p4 <- plot_Mal(data = meta_long, variable = "shannon_bac") + 
+p22 <- plot_Mal(data = meta_long, variable = "shannon_bac") + 
   ylab("Shannon Diversity") + 
   xlab("") + 
   ggtitle("") + 
   ylim(2,8)
-p4
+p22
 # Archaea 
-p5 <- plot_Mal(data = meta_long, variable = "shannon_arch") + 
+p23 <- plot_Mal(data = meta_long, variable = "shannon_arch") + 
   ylab("") + 
   xlab("") + 
   ggtitle("") + 
   ylim(2,8)
-p5
+p23
 # Fungi
-p6 <- plot_Mal(data = meta_long, variable = "shannon_fun") + 
+p24 <- plot_Mal(data = meta_long, variable = "shannon_fun") + 
   ylab("") + 
   xlab("") + 
   ggtitle("") + 
   ylim(2,8)
-p6
+p24
 
 
-# Shannon
+# Simpson
 # Bacteria 
-p7 <- plot_Mal(data = meta_long, variable = "simpson_bac") + 
+p25 <- plot_Mal(data = meta_long, variable = "simpson_bac") + 
   ylab("Simpson Diversity") + 
   xlab("") + 
   ggtitle("") + 
   ylim(0.7,1)
-p7
+p25
 # Archaea 
-p8 <- plot_Mal(data = meta_long, variable = "simpson_arch") + 
+p26 <- plot_Mal(data = meta_long, variable = "simpson_arch") + 
   ylab("") + 
   xlab("Calf age (month of life)") + 
   ggtitle("") + 
   ylim(0.7,1)
-p8
+p26
 # Fungi
-p9 <- plot_Mal(data = meta_long, variable = "simpson_fun") + 
+p27 <- plot_Mal(data = meta_long, variable = "simpson_fun") + 
   ylab("") + 
   xlab("") + 
   ggtitle("") + 
   ylim(0.7,1)
-p9
+p27
 
 
 # Mega panel
-((p1 | p2 | p3 ) / (p4 | p5 | p6) / (p7 | p8 | p9)) + 
+((p19 | p20 | p21 ) / (p22 | p23 | p24) / (p25 | p26 | p27)) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -780,7 +599,7 @@ p9
 #        dpi = 96.14)
 
 # The panel we are actually going to use
-((p4 + ggtitle("Bacteria")) | (p5 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p6 + ggtitle("Fungi")) ) + 
+((p22 + ggtitle("Bacteria")) | (p23 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p24 + ggtitle("Fungi")) ) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -847,73 +666,73 @@ meta_long <- metadata_dcs %>%
 
 # Richness
 # Bacteria 
-p1 <- plot_Low(data = meta_long, variable = "rich_bac") + 
+p28 <- plot_Low(data = meta_long, variable = "rich_bac") + 
   ylab("Species Richness") + 
   xlab("") + 
   ggtitle("Bacteria") 
-p1
+p28
 # Archaea 
-p2 <- plot_Low(data = meta_long, variable = "rich_arch") + 
+p29 <- plot_Low(data = meta_long, variable = "rich_arch") + 
   ylab("") + 
   xlab("") + 
   ggtitle("Archaea") 
-p2
+p29
 # Fungi 
-p3 <- plot_Low(data = meta_long, variable = "rich_fun") + 
+p30 <- plot_Low(data = meta_long, variable = "rich_fun") + 
   ylab("") + 
   xlab("") + 
   ggtitle("Fungi") 
-p3
+p30
 
 # Shannon
 # Bacteria 
-p4 <- plot_Low(data = meta_long, variable = "shannon_bac") + 
+p31 <- plot_Low(data = meta_long, variable = "shannon_bac") + 
   ylab("Shannon Diversity") + 
   xlab("") + 
   ggtitle("") + 
   ylim(0,8) 
-p4
+p31
 # Archaea 
-p5 <- plot_Low(data = meta_long, variable = "shannon_arch") + 
+p32 <- plot_Low(data = meta_long, variable = "shannon_arch") + 
   ylab("") + 
   xlab("") + 
   ggtitle("") + 
   ylim(0,8)
-p5
+p32
 # Fungi
-p6 <- plot_Low(data = meta_long, variable = "shannon_fun") + 
+p33 <- plot_Low(data = meta_long, variable = "shannon_fun") + 
   ylab("") + 
   xlab("") + 
   ggtitle("") + 
   ylim(0,8)
-p6
+p33
 
 # Simpson
 # Bacteria 
-p7 <- plot_Low(data = meta_long, variable = "simpson_bac") + 
+p34 <- plot_Low(data = meta_long, variable = "simpson_bac") + 
   ylab("Simpson Diversity") + 
   xlab("") + 
   ggtitle("") + 
   ylim(0,1)
-p7
+p34
 # Archaea
-p8 <- plot_Low(data = meta_long, variable = "simpson_arch") + 
+p35 <- plot_Low(data = meta_long, variable = "simpson_arch") + 
   ylab("") + 
   xlab("Calf age (month of life)") + 
   ggtitle("") + 
   ylim(0,1)
-p8
+p35
 # Fungi
-p9 <- plot_Low(data = meta_long, variable = "simpson_fun") + 
+p36 <- plot_Low(data = meta_long, variable = "simpson_fun") + 
   ylab("") + 
   xlab("") + 
   ggtitle("") +
   ylim(0,1)
-p9
+p36
 
 
 # Mega panel
-((p1 | p2 | p3 ) / (p4 | p5 | p6) / (p7 | p8 | p9)) + 
+((p28 | p29 | p30 ) / (p31 | p32 | p33) / (p34 | p35 | p36)) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -938,7 +757,7 @@ p9
 
 
 # The panel we are actually going to use
-((p4 + ggtitle("Bacteria")) | (p5 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p6 + ggtitle("Fungi")) ) + 
+((p31 + ggtitle("Bacteria")) | (p32 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p33 + ggtitle("Fungi")) ) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),

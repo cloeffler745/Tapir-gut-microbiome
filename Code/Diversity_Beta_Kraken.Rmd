@@ -59,6 +59,37 @@ identical(labels(data_beta_Jac_fun), rownames(metadata_mt_select))
 identical(labels(data_beta_BC_fun), rownames(metadata_mt_select))
 ```
 
+## Plot function
+
+```{r}
+plot_beta_mt_select <- function(data, title, variance, legend.pos = "none") {
+  ggplot(data, 
+         aes(x = Axis.1, 
+             y = Axis.2, 
+             fill = Group)) + 
+    geom_point(shape = 21, size = 2) +
+    xlab(paste0("PCoA.1 [", round(variance[[1]], 2), "%]")) +
+    ylab(paste0("PCoA.2 [", round(variance[[2]], 2), "%]")) +
+    ggtitle(title) + 
+    scale_fill_manual(
+      name = "Group",
+      breaks = c("Wild", "Ex-situ"),
+      values = c(
+        "Wild" = "#99FF33",
+        "Ex-situ" = "#A6A6A6"
+      ),
+      labels = c(
+        "Wild" = "Wild",
+        "Ex-situ" = expression(italic("Ex-situ")))) + 
+    theme(title = element_text(size = 12),
+          axis.title = element_text(size = 12), 
+          axis.text = element_text(size = 10), 
+          legend.title = element_text(size = 12), 
+          legend.text = element_text(size = 12),
+          legend.position = legend.pos)
+}
+```
+
 ## Bacteria
 
 ### Calculate statistics
@@ -119,31 +150,9 @@ points2 <- cbind(points, metadata_mt_select)
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
 # Plot Group
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Jaccard") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
+plot_bac_Group_Jac <- plot_beta_mt_select(points2, "Jaccard", per_variance)
   
-plot_bray_Group_Jac
+plot_bac_Group_Jac
 
 
 # Bray Curtis
@@ -155,34 +164,12 @@ points2 <- cbind(points, metadata_mt_select)
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
 # Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Bray-Curtis") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) +
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
+plot_bac_Group_BC <- plot_beta_mt_select(points2, "Bray-Curtis", per_variance, "bottom")
   
-plot_bray_Group_BC
+plot_bac_Group_BC
 
 
-(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+(plot_bac_Group_Jac | plot_bac_Group_BC) + plot_annotation(tag_levels = "A", 
                              title = "") + 
   plot_layout(guides = "collect") &
   theme(plot.tag = element_text(size = 20, face = "bold"),
@@ -268,31 +255,9 @@ points2 <- cbind(points, metadata_mt_select)
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
 # Plot Group
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Jaccard") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
+plot_arch_Group_Jac <- plot_beta_mt_select(points2, "Jaccard", per_variance, "right")
   
-plot_bray_Group_Jac
+plot_arch_Group_Jac
 
 
 
@@ -305,35 +270,13 @@ points2 <- cbind(points, metadata_mt_select)
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
 # Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Bray-Curtis") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
+plot_arch_Group_BC <- plot_beta_mt_select(points2, "Bray-Curtis", per_variance)
   
-plot_bray_Group_BC
+plot_arch_Group_BC
 
 
 
-(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+(plot_arch_Group_Jac | plot_arch_Group_BC) + plot_annotation(tag_levels = "A", 
                              title = "") + 
   plot_layout(guides = "collect") &
   theme(plot.tag = element_text(size = 20, face = "bold"),
@@ -419,31 +362,10 @@ points2 <- cbind(points, metadata_mt_select)
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
 # Plot Group
-plot_bray_Group_Jac <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Jaccard") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
+set.seed(1994)
+plot_fun_Group_Jac <- plot_beta_mt_select(points2, "Jaccard", per_variance, "right")
   
-plot_bray_Group_Jac
+plot_fun_Group_Jac
 
 
 
@@ -457,36 +379,14 @@ points2 <- cbind(points, metadata_mt_select)
 per_variance <- bray_ordination[["values"]][["Relative_eig"]]*100 
 
 # Plot Group
-plot_bray_Group_BC <- ggplot(points2, 
-                              aes(x = Axis.1, 
-                                  y = Axis.2, 
-                                  fill = Group)) + 
-  geom_point(shape = 21, size = 2) +
-  xlab(paste0("PCoA.1 [", round(per_variance[1], 2), "%]")) +
-  ylab(paste0("PCoA.2 [", round(per_variance[2], 2), "%]")) +
-  ggtitle("Bray-Curtis") + 
-  scale_fill_manual(
-    name = "Group",
-    breaks = c("Wild", "Ex-situ"),
-    values = c(
-      "Wild" = "#99FF33",
-      "Ex-situ" = "#A6A6A6"
-    ),
-    labels = c(
-      "Wild" = "Wild",
-      "Ex-situ" = expression(italic("Ex-situ")))) + 
-  theme(title = element_text(size = 12),
-        axis.title = element_text(size = 12), 
-        axis.text = element_text(size = 10), 
-        legend.title = element_text(size = 12), 
-        legend.text = element_text(size = 12))
+plot_fun_Group_BC <- plot_beta_mt_select(points2, "Bray-Curtis", per_variance)
   
-plot_bray_Group_BC
+plot_fun_Group_BC
 
 
 
 
-(plot_bray_Group_Jac | plot_bray_Group_BC) + plot_annotation(tag_levels = "A", 
+(plot_fun_Group_Jac | plot_fun_Group_BC) + plot_annotation(tag_levels = "A", 
                              title = "") + 
   plot_layout(guides = "collect") &
   theme(plot.tag = element_text(size = 20, face = "bold"),
