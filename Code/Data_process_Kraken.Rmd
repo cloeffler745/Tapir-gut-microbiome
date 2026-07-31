@@ -12,9 +12,10 @@ library(vegan)
 ## Process metadata
 
 ```{r}
-metadata <- read_excel(path = "../metadata_clean_deindentified.xlsx",
-                       sheet = 1, 
-                       col_types = c(rep("guess",2), "date", rep("guess", 7))) %>%
+metadata <- read.table(file = "../metadata_clean_deindentified.tsv",
+                       header = TRUE, 
+                       sep = "\t",
+                       colClasses = c(rep("character",3), "Date", rep("character", 6), "numeric")) %>%
   as.data.frame() # Because maaslin2 is specific about data frames
 row.names(metadata) <- metadata$Fastq_name
 
@@ -159,6 +160,7 @@ abund_virus_mt_select <- kraken_130_species %>%
                                              "49_S41", "6_S3", "87_S105", "9_S4")) %>% 
   select(any_of(lineage_table$Species[lineage_table$Higher_taxa == "Viruses"])) %>% 
   .[, colSums(. != 0) != 0] # remove species not in any samples of the subset
+
 ```
 
 For plants (no rarefaction needed, going straight to differential abundance analysis)
@@ -302,7 +304,7 @@ abund_bac_dcs_rare %>%
   summarise(across(everything(), ~ sum(., na.rm = TRUE)))
 ```
 
-For Archaea
+For archaea
 
 ```{r}
 # Isolate archaeal read data for the mountain tapir samples
