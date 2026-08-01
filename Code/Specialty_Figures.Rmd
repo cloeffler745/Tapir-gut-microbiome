@@ -1,0 +1,543 @@
+# BOILER PLATE
+
+```{r}
+library(ggplot2)
+library(reshape2)
+library(tibble)
+library(dplyr)
+#library(plotly)
+library(hilldiv)
+library(ggtext)
+library(lubridate)
+library(patchwork)
+```
+
+# Functions
+
+```{r}
+`%notin%` = function(x,y) !(x %in% y)
+```
+
+# Set-up variables
+
+```{r}
+# Get the sample groups going
+wild <- metadata %>% 
+  filter(Zoo_Code == "Wild") %>% 
+  select(Fastq_name) %>% 
+  unlist()
+Zoo1 <- metadata %>% 
+  filter(Zoo_Code == "Zoo1") %>% 
+  select(Fastq_name) %>% 
+  unlist()
+Zoo2 <- metadata %>% 
+  filter(Zoo_Code == "Zoo2") %>% 
+  select(Fastq_name) %>% 
+  unlist()
+Zoo3 <- metadata %>% 
+  filter(Zoo_Code == "Zoo3") %>% 
+  select(Fastq_name) %>% 
+  unlist()
+Zoo4 <- metadata %>% 
+  filter(Zoo_Code == "Zoo4") %>% 
+  select(Fastq_name) %>% 
+  unlist()
+
+# Get the sample groups going
+wild_ID <- metadata %>% 
+  filter(Zoo_Code == "Wild") %>% 
+  select(Sample_ID) %>% 
+  unlist()
+Zoo1_ID <- metadata %>% 
+  filter(Zoo_Code == "Zoo1") %>%
+  select(Sample_ID) %>% 
+  unlist()
+Zoo2_ID <- metadata %>% 
+  filter(Zoo_Code == "Zoo2") %>% 
+  select(Sample_ID) %>% 
+  unlist()
+Zoo3_ID <- metadata %>% 
+  filter(Zoo_Code == "Zoo3") %>% 
+  select(Sample_ID) %>% 
+  unlist()
+Zoo4_ID <- metadata %>% 
+  filter(Zoo_Code == "Zoo4") %>% 
+  select(Sample_ID) %>% 
+  unlist()
+
+# Order of the samples that makes sense in the figures
+# Sorting my Animal then by time
+sample_order_ID <- c("WMT1_0","WMT2_0","WMT3_0","WMT4_0","WMT5_0",
+                     "WMT6_0", # Wild
+                     "ZMT7_0","ZMT7_1","ZMT7_2","ZMT7_3","ZMT7_4", # Zoo1
+                     "ZMT6_0","ZMT6_1","ZMT6_2","ZMT6_3",
+                     "ZMT5_0","ZMT5_1","ZMT5_2","ZMT5_3","ZMT5_4",
+                     "ZMT4_0","ZMT4_1","ZMT4_2","ZMT4_3","ZMT4_4",
+                     "ZMT3_0","ZMT3_1","ZMT3_2","ZMT3_3","ZMT3_4",
+                     "ZMT2_0","ZMT2_1","ZMT2_2","ZMT2_3","ZMT2_4","ZMT2_5",
+                     "ZMT2_6", # Zoo2
+                     "ZMT1_0","ZMT1_1","ZMT1_2","ZMT1_3",
+                     "ZMT1_4","ZMT1_5", 
+                     "MaTS_0",
+                     "MaTD_0","MaTD_1","MaTD_2","MaTD_3","MaTD_4","MaTD_5","MaTD_6",
+                     "MaTD_7", #Zoo3
+                     "MaTC_0","MaTC_1","MaTC_2","MaTC_3","MaTC_4","MaTC_5",
+                     "MaTC_6","MaTC_7","MaTC_8","MaTC_9","MaTC_10","MaTC_11",
+                     "MaTC_12","MaTC_13","MaTC_14","MaTC_15","MaTC_16",
+                     "MaTC_17",
+                     "LTD_0","LTD_1","LTD_2","LTD_3","LTD_4", # Zoo4
+                     "LTC_0","LTC_1","LTC_2","LTC_3","LTC_4",
+                     "LTC_5","LTC_6","LTC_7","LTC_8","LTC_9",
+                     "LTC_10","LTC_11","LTC_12","LTC_13","LTC_14",
+                     "LTC_15","LTC_16","LTC_17","LTC_18","LTC_19",
+                     "LTC_20","LTC_21","LTC_22","LTC_23","LTC_24",
+                     "LTC_25","LTC_26","LTC_27")
+
+sample_order_fastq <- c("1_S1","10_S5","2_S2","6_S3","87_S105","9_S4", #Wild
+                        "33_S25","24_S16","25_S17","44_S36","32_S24", #ZMT7
+                        "37_S29","23_S15","42_S34","36_S28", #ZMT6
+                        "19_S12","17_S10","22_S14","18_S11","21_S13", #ZMT5
+                        "35_S27","26_S18","27_S19","40_S32","34_S26", #ZMT4
+                        "31_S23","28_S20","29_S21","41_S33","30_S22", #ZMT3
+                        "48_S40","43_S35","15_S8","14_S7","39_S31","47_S39",
+                        "12_S77", #ZMT2
+                        "49_S41","45_S37","16_S9","38_S30","46_S38","11_S6",
+                        #ZMT1^
+                        "89_S78", #MaTS
+                        "90_S79","91_S80","92_S81","93_S82","94_S83","95_S84",
+                        "96_S85","97_S86", #MaTD 
+                        "98_S87","99_S88","100_S89","101_S90","102_S91","103_S92",
+                        "104_S93","105_S94","106_S95","107_S96","108_S97",
+                        "109_S98","110_S99","111_S100","112_S101","113_S102",
+                        "114_S103","115_S104", #MaTC 
+                        "83_S74","84_S75","80_S71","81_S72","82_S73", #LTD
+                        "78_S69","54_S46","64_S56","69_S61","71_S63","65_S57",
+                        "51_S43","58_S50","73_S65","72_S64","57_S49","76_S67",
+                        "62_S54","63_S55","52_S44","53_S45","61_S53","68_S60",
+                        "77_S68","70_S62","50_S42","66_S58","60_S52","55_S47",
+                        "67_S59","59_S51","74_S66","56_S48") #LTC
+```
+
+# Kraken2 Alignment percentages
+
+Set up the data_graphing variable
+
+```{r}
+# Get the data
+percentages <- read.delim(file = "../Data/Kraken_align_compare.tsv", 
+                          header = TRUE) %>% 
+  select(Sample, K_130) %>% 
+  mutate(K_130 = as.numeric(sub("%", "", K_130))) %>% 
+  mutate(unclassified = (100 - K_130)) %>% 
+  rename(aligned = K_130) %>%
+  filter(Sample %notin% c("79_S70","86_S76", "88_S106")) %>% 
+  as.data.frame()
+
+# Give me the mean percetage 
+#mean(percentages$aligned)
+
+# holdMe <- metadata %>% 
+#   select(Fastq_name, QC.read.count..Millions.) %>% 
+#   rename(Sample = Fastq_name) %>% 
+#   full_join(percentages, ., by = "Sample")
+
+# Reshape it
+data_graph <- percentages
+data_graph$lineage <- as.factor(percentages$Sample)
+data_graph <- melt(data_graph[,2:ncol(data_graph)], id.vars = "lineage") %>%
+  mutate(variable = factor(variable, levels = c("unclassified", "aligned"))) %>% 
+  mutate(lineage = factor(lineage, levels = c(sample_order_fastq)) )
+
+# Make the vector to be used to change fastq names into animal sample IDs (sample ID)
+sample_to_animal <- setNames(metadata$Sample_ID, metadata$Fastq_name)
+
+```
+
+```{r}
+# The graphs
+p1 <- ggplot(data_graph[data_graph$lineage %in% wild, ], 
+       aes(fill = variable, 
+           y = value, 
+           x = lineage)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_fill_manual(name = "Read fate", values = c("gray", "salmon")) + 
+  scale_x_discrete(
+    breaks = levels(data_graph$lineage),
+    labels = sample_to_animal[levels(data_graph$lineage)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Wild mt. tapirs", y = "Proportion of Total Reads", x = "Sample")
+p1
+
+p2 <- ggplot(data_graph[data_graph$lineage %in% Zoo1, ], 
+       aes(fill = variable, 
+           y = value, 
+           x = lineage)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_fill_manual(name = "Read fate", values = c("gray", "salmon")) + 
+  scale_x_discrete(labels = sample_to_animal) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Zoo1 mt. tapirs", y = "Proportion of Total Reads", x = "Sample") 
+p2
+
+p3 <- ggplot(data_graph[data_graph$lineage %in% Zoo2, ], 
+       aes(fill = variable, 
+           y = value, 
+           x = lineage)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_fill_manual(name = "Read fate", values = c("gray", "salmon")) + 
+  scale_x_discrete(
+    breaks = levels(data_graph$lineage),
+    labels = sample_to_animal[levels(data_graph$lineage)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Zoo2 mt. tapirs", y = "Proportion of Total Reads", x = "Sample") 
+p3
+
+p4 <- ggplot(data_graph[data_graph$lineage %in% Zoo3, ], 
+       aes(fill = variable, 
+           y = value, 
+           x = lineage)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_fill_manual(name = "Read fate", values = c("gray", "salmon")) + 
+  scale_x_discrete(
+    breaks = levels(data_graph$lineage),
+    labels = sample_to_animal[levels(data_graph$lineage)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Malayan tapirs", y = "Proportion of Total Reads", x = "Sample") 
+p4
+
+p5 <- ggplot(data_graph[data_graph$lineage %in% Zoo4, ], 
+       aes(fill = variable, 
+           y = value, 
+           x = lineage)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_fill_manual(name = "Read fate", values = c("gray", "salmon")) + 
+  scale_x_discrete(
+    breaks = levels(data_graph$lineage),
+    labels = sample_to_animal[levels(data_graph$lineage)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Lowland tapirs", y = "Proportion of Total Reads", x = "Sample") 
+p5
+```
+
+# Taxonomic alignment
+
+## Get the data frames
+
+### Make the big combined data frame
+
+```{r}
+# Get the data where the sample names are the sample_IDs I set up instead
+data_graph <- read.delim(file = "../Data/CombinedTableAllSamples_Bracken_Phyla.tsv",
+                         header = TRUE,
+                         check.names = FALSE,
+                         sep = "\t") %>% 
+  rownames_to_column(var = "X")
+
+# Convert all the names to higherTaxa names
+for (i in data_graph$X) {
+  high_tax <- unique(lineage_table$Higher_taxa[lineage_table$Phylum == i])
+  data_graph[data_graph$X == i, "X"] <- high_tax
+}
+# Sum across the higher_taxa and order the samples
+data_graph <- data_graph %>% 
+  group_by(X) %>% 
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>% 
+  ungroup() %>% 
+  select(X, any_of(sample_order_fastq))
+
+# Reshape data so I can graph with it
+data_long <- data_graph
+data_long$lineage <- as.factor(data_graph$X)
+data_long <- melt(data_long[,2:ncol(data_long)], id.vars = "lineage")
+data_bar <- data_long 
+rm(data_long, data_graph)
+```
+
+```{r}
+# Make the variable for graphing and editing
+high_taxa_graph <- kraken_130_species %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "X")
+
+holdMe <- c()
+library(rlang)
+# Convert the species names to higher taxa names and add up all the reads
+for (i in high_taxa_graph$X) {
+  # get the higher taxa 
+  tax <- lineage_table$Higher_taxa[lineage_table$Species == i]
+  if (rlang::is_empty(tax)){
+    holdMe <- c(holdMe, i) # Everything that skipped is a virus
+    high_taxa_graph[high_taxa_graph$X == i, "X"] <- "Viruses"
+  }
+  else{
+    # Replace the Species name in the graphing variable 
+    high_taxa_graph[high_taxa_graph$X == i, "X"] <- tax
+  }
+}
+
+# Sum up all the values that belong to the same higher taxa 
+high_taxa_graph <- high_taxa_graph %>% 
+  group_by(X) %>% 
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>% 
+  ungroup() %>% 
+  select(X, any_of(sample_order_fastq))
+
+# Reshape data so I can graph with it
+data_long <- high_taxa_graph
+data_long$lineage <- as.factor(high_taxa_graph$X)
+data_long <- melt(data_long[,2:ncol(data_long)], id.vars = "lineage")
+data_bar <- data_long 
+rm(data_long, high_taxa_graph)
+```
+
+Make the graphs
+
+```{r}
+# Make the plots by group so I can actually see everything
+p6 <- ggplot(data_bar[data_bar$variable %in% wild, ], 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_y_continuous() + 
+  scale_x_discrete(
+    breaks = levels(data_bar$variable),
+    labels = sample_to_animal[levels(data_bar$variable)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Wild mt. tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  scale_fill_discrete(name = "Higher Taxa")
+p6
+
+
+p7 <- ggplot(data_bar[data_bar$variable %in% Zoo1, ], 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_y_continuous() + 
+  scale_x_discrete(
+    breaks = levels(data_bar$variable),
+    labels = sample_to_animal[levels(data_bar$variable)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Zoo1 mt. tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  scale_fill_discrete(name = "Higher Taxa")
+p7
+
+
+p8 <- ggplot(data_bar[data_bar$variable %in% Zoo2, ], 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_y_continuous() + 
+  scale_x_discrete(
+    breaks = levels(data_bar$variable),
+    labels = sample_to_animal[levels(data_bar$variable)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Zoo2 mt. tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  scale_fill_discrete(name = "Higher Taxa")
+p8
+
+
+p9 <- ggplot(data_bar[data_bar$variable %in% Zoo3, ], 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_y_continuous() + 
+  scale_x_discrete(
+    breaks = levels(data_bar$variable),
+    labels = sample_to_animal[levels(data_bar$variable)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Malayan tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  scale_fill_discrete(name = "Higher Taxa")
+p9
+
+
+p10 <- ggplot(data_bar[data_bar$variable %in% Zoo4, ], 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position="fill", stat="identity", color = "black", linewidth = 0.25) +
+  scale_y_continuous() + 
+  scale_x_discrete(
+    breaks = levels(data_bar$variable),
+    labels = sample_to_animal[levels(data_bar$variable)]) +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Lowland tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  scale_fill_discrete(name = "Higher Taxa")
+p10
+```
+
+## Make combined read % and higher taxa panels
+
+```{r}
+# Supplemental Figure 1
+(p1 / p6) + plot_annotation(tag_levels = "A") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.title= element_markdown()) 
+
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig1.tiff", 
+       width=180, 
+       height=212.7, 
+       units = "mm")
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig1.png",
+       width=5.5, # 7.5
+       height=6.5) # 5
+
+# Supplemental Figure 2
+(p2 / p7) + plot_annotation(tag_levels = "A") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.title= element_markdown()) 
+
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig2.tiff", 
+       width=6, 
+       height=6.5)
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig2.png", 
+       width=6, 
+       height=6.5) 
+
+# Supplemental Figure 3
+(p3 / p8) + plot_annotation(tag_levels = "A") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.title= element_markdown()) 
+
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig3.tiff", 
+       width=5.5, 
+       height=6.5)
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig3.png", 
+       width=5.5, 
+       height=6.5)
+
+# Supplemental Figure 4
+(p4 / p9) + plot_annotation(tag_levels = "A") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"), 
+        plot.title= element_markdown()) 
+
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig4.tiff", 
+       width=6, 
+       height=6.5)
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig4.png", 
+       width=6, 
+       height=6.5)
+
+# Supplemental Figure 5
+(p5 / p10) + plot_annotation(tag_levels = "A") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        plot.title= element_markdown()) 
+
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.tiff", 
+       width=6, # 11 
+       height=6.5) # 5
+ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.png", 
+       width=6, 
+       height=6.5,
+       units = "in")
+```
+
+# Archaeal Wild versus *Ex-situ*
+
+```{r}
+library(reshape2)
+
+Mas_data <- abund_arch_mt_select %>%
+  select(any_of(microbes_pass_filter))
+
+
+# GENUS 
+graph_me <- Mas_data %>%
+  t() %>% 
+  tss() %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "X")  %>% 
+  left_join(lineage_table %>% select(Species, Genus), by = c("X" = "Species")) %>%
+  mutate(X = Genus) %>%
+  select(-Genus) %>%
+  # Group by the new family-based X and sum all numeric columns
+  group_by(X) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop")
+
+graph_me$lineage <- as.factor(graph_me$X)
+graph_me <- melt(graph_me[,2:ncol(graph_me)], id.vars = "lineage") %>% 
+  mutate(variable = factor(variable, levels = c("1_S1", "10_S5", "2_S2", "6_S3", "87_S105", 
+                                                "9_S4", "19_S12", "31_S23", "33_S25",
+                                                "35_S27", "37_S29", "48_S40", "49_S41")))
+  
+# Make the bar plot
+ggplot(graph_me, 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position = "fill", 
+           stat = "identity", 
+           color = "black") + 
+  theme(axis.text.x = element_text(angle = 90), 
+        legend.position = "right") + 
+  xlab("Samples") + 
+  ylab("Proportion of Archaeome") + 
+  guides(fill = guide_legend(title="Genus"))
+
+
+# SPECIES WITH THE RED BOXES around genera----------------------------------------------
+
+graph_me <- Mas_data %>%
+  t() %>% 
+  tss() %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "X") 
+
+# Now with the red boxes?
+# 1. Add genus info to your plotting data fram
+graph_me$lineage <- as.factor(graph_me$X)
+graph_me <- melt(graph_me[,2:ncol(graph_me)], id.vars = "lineage") %>% 
+  mutate(variable = factor(variable, levels = c("1_S1", "10_S5", "2_S2", "6_S3", "87_S105", 
+                                                "9_S4", "19_S12", "31_S23", "33_S25",
+                                                "35_S27", "37_S29", "48_S40", "49_S41")))
+
+graph_me <- graph_me %>%
+  left_join(lineage_table %>% select(Species, Genus), by = c("lineage" = "Species"))
+# 2. Make sure species (lineage) is ordered so same-genus species are adjacent
+graph_me <- graph_me %>%
+  arrange(lineage) %>%
+  mutate(lineage = factor(lineage, levels = unique(lineage)))
+
+# 3. Compute proportions per sample, and cumulative stacking positions
+#    NOTE: ggplot's position_stack() stacks in *reverse* factor level order by default,
+#    so we replicate that here with desc(lineage) to get matching ymin/ymax.
+stacked <- graph_me %>%
+  group_by(variable) %>%
+  mutate(prop = value / sum(value)) %>%
+  arrange(variable, desc(lineage)) %>%
+  mutate(ymax = cumsum(prop),
+         ymin = ymax - prop) %>%
+  ungroup()
+
+# 4. Collapse to one box per genus per sample
+genus_boxes <- stacked %>%
+  group_by(variable, Genus) %>%
+  summarise(ymin = min(ymin), ymax = max(ymax), .groups = "drop") %>%
+  mutate(
+    xmin = as.numeric(factor(variable)) - 0.45,  # 0.45 = half of default bar width (0.9)
+    xmax = as.numeric(factor(variable)) + 0.45
+  )
+
+# 5. Plot
+ggplot(graph_me, 
+       aes(fill = lineage, 
+           y = value, 
+           x = variable)) + 
+  geom_bar(position = "fill", 
+           stat = "identity", 
+           color = "black") + 
+  geom_rect(data = genus_boxes,
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE,
+            color = "white", fill = NA, linewidth = 0.8) +
+  theme(axis.text.x = element_text(angle = 90), 
+        legend.position = "right") + 
+  xlab("Samples") + 
+  ylab("Proportion of Archaeome") + 
+  guides(fill = guide_legend(title = "Species"))
+
+```
