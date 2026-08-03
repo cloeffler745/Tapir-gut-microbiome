@@ -48,11 +48,14 @@ volcano_plot <- function(maaslin_file, output_path, output_name, cutoff = 0.05, 
     theme_bw() + 
     guides(fill = guide_legend(nrow = 2, ncol = 2, byrow = TRUE)) +
     theme(text = element_text(size = 12),
+          axis.title = element_text(size = 10),
           legend.position = "bottom", 
           legend.text = element_text(size = 10),
           legend.title = element_blank(), # element_text(size = 12),
           #legend.key.height=unit(2, "cm"),
           plot.title= element_markdown(),
+          title = element_text(size = 10),
+          legend.margin = margin(-10, 25, 0, 0) #t,r,b,l
           # panel.background = element_rect(fill = "black")
     ) +
     geom_text_repel(
@@ -150,12 +153,12 @@ Maaslin2(Mas_data,
 volc_bac <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_results.tsv", 
              "../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria",
              "Bacteria_only", Plot_title = "Wild v. *ex-situ* (Bacteria)",
-             chosen = c("Vibrio.parahaemolyticus","Salmonella.bongori","Shigella.flexneri", 
-                        "Escherichia.coli", "Veillonella.dispar","Fibrobacter.succinogenes",
-                        "Corynebacterium.kefirresidentii",
-                        "Treponema.bryantii","Treponema.ruminis","Ruminococcus.albus",
-                        "Fibrobacter.succinogenes","Ruminococcus.champanellensis",
-                        "Pseudomonas.sp..Nvir","Acetoanaerobium.sticklandii"))
+             chosen = c("Ruminococcus.albus", "Treponema.bryantii", "Treponema.ruminis",
+                        "Fibrobacter.succinogenes", "Ruminococcus.champanellensis", 
+                        "Escherichia.coli", "Butyricimonas.virosa", 
+                        "Vibrio.parahaemolyticus", "Shigella.flexneri", 
+                        "Clostridioides.difficile", "Denitrobacterium.detoxificans",
+                        "Slackia.heliotrinireducens"))
 
 # For presentation
 volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_results.tsv", 
@@ -172,28 +175,33 @@ volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_
 Make the big figure (now that we have all the parts
 
 ```{r}
+# design <- "AABBCC
+# DDFFFF
+# EEFFFF"
 
-design <- "AABBCC
-DDFFFF
-EEFFFF"
+design <- "AAAABBBCCCCC
+DDDDDFFFFFFF
+EEEEEFFFFFFF"
+
 
 (p1 + p2 + p3 + plot_bac_Group_Jac + plot_bac_Group_BC + volc_bac) + 
   plot_layout(design = design) + 
   plot_annotation(tag_levels = "A", 
-                             title = "") & 
+                  title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
-        plot.title= element_markdown()) 
+        plot.title= element_markdown(), 
+        legend.text = element_text(size = 8, margin = margin(b = 2)), 
+        legend.title = element_blank(), 
+        legend.key.spacing = unit(0.1, "cm"))
 
 
 
-# 
-# ((p1 | p2 | p3)/(plot_bac_Group_Jac / plot_bac_Group_BC)/(volc_bac)) + 
-#   plot_annotation(tag_levels = "A", 
-#                              title = "") & 
-#   theme(plot.tag = element_text(size = 20, face = "bold"),
-#         plot.tag.position = c(0.02, 1.02), 
-#         plot.title= element_markdown()) 
+# ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_bac_Div_Diff_panel.svg",
+#        width = 180,
+#        height = 178,
+#        units = "mm")
+
 ```
 
 ## For Archaea
@@ -224,15 +232,12 @@ Maaslin2(Mas_data,
 volc_arch <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_results.tsv",
              "../Data/Maaslin2_outs_rare/No rare select min detect/MountainWvC/Archaea",
              "Archaea_only", Plot_title = "Wild v. *ex-situ* (Archaea)",
-             chosen = c("Methanoculleus.bourgensis","Methanofollis.aquaemaris","Methanofollis.liminatans",
-                        "Methanolobus.zinderi","Methanoregula.boonei",
-                        "Methanosarcina.acetivorans","Methanosarcina.siciliae",
-                        "Methanospirillum.lacunae","Methanospirillum.stamsii","Methanobrevibacter.acididurans",
-                        "Methanobrevibacter.smithii","Methanobrevibacter.intestini",
-                        "Methanobrevibacter.millerae",
-                        "Methanobrevibacter.olleyae","Methanobrevibacter.ruminantium",
+             chosen = c("Methanobrevibacter.ruminantium", "Methanobrevibacter.smithii",
+                        "Methanoculleus.chikugoensis", "Methanocorpusculum.labreanum",
+                        "Methanoculleus.bourgensis", "Methanobrevibacter.intestini", 
+                        "Methanobrevibacter.olleyae", "Methanobrevibacter.millerae",
+                        "Methanobrevibacter.sp..AbM4", 
                         "Methanobrevibacter.sp..TLL.48.HuF1"))
-# "Methanosarcina.sp..WH1", "Methanobrevibacter.sp..AbM4", "Methanobrevibacter.sp..YE315", "Methanolobus.sp..WCC4"
 
 # For presentation
 volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_results.tsv",
@@ -248,18 +253,15 @@ volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_r
 Make the big plot (now that we have all the pieces)
 
 ```{r}
-# ((p4 | p5 | p6)/(plot_arch_Group_Jac | plot_arch_Group_BC)/(volc_arch)) + 
-#   plot_annotation(tag_levels = "A", 
-#                              title = "") & 
-#   theme(plot.tag = element_text(size = 20, face = "bold"),
-#         plot.tag.position = c(0.02, 1.02), 
-#         plot.title= element_markdown()) 
 
-design <- "AABBCC
-DDDEEE
-FFFFFF
-FFFFFF"
+# design <- "AABBCC
+# DDDEEE
+# FFFFFF
+# FFFFFF"
 
+design <- "AAAABBBCCCCC
+DDDDDFFFFFFF
+EEEEEFFFFFFF"
 
 (p4 + p5 + p6 + plot_arch_Group_Jac + plot_arch_Group_BC + volc_arch) + 
   plot_layout(design = design) + 
@@ -267,7 +269,15 @@ FFFFFF"
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
-        plot.title= element_markdown()) 
+        plot.title= element_markdown(),
+        legend.text = element_text(size = 8, margin = margin(b = 2)), 
+        legend.title = element_blank(), 
+        legend.key.spacing = unit(0.1, "cm")) 
+
+ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_arch_Div_Diff_panel.svg", 
+       width = 180,
+       height = 178,
+       units = "mm")
 ```
 
 ## For Fungi
@@ -296,19 +306,34 @@ Maaslin2(Mas_data,
 ```{r}
 volc_fun <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Fungi/all_results.tsv", 
              "../Data/Maaslin2_outs_rare/No rare select min detect/Fungi",
-             "Fungi_only")
+             "Fungi_only", Plot_title = "Wild v. *ex-situ* (Fungi)")
 volc_fun
 ```
 
 Make the big plot (now that we have all the pieces)
 
 ```{r}
-((p7 | p8 | p9)/(plot_fun_Group_Jac | plot_fun_Group_BC)) + 
+
+design <- "AAAABBBCCCCC
+DDDDDFFFFFFF
+EEEEEFFFFFFF"
+
+(p7 + p8 + p9 + plot_fun_Group_Jac + plot_fun_Group_BC + volc_fun) + 
+  plot_layout(design = design) + 
   plot_annotation(tag_levels = "A", 
                              title = "") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.tag.position = c(0.02, 1.02), 
-        plot.title= element_markdown()) 
+        plot.title= element_markdown(),
+        legend.text = element_text(size = 8, margin = margin(b = 2)), 
+        legend.title = element_blank(), 
+        legend.key.spacing = unit(0.1, "cm")) 
+
+ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_fun_Div_Diff_panel.png",
+       width = 180,
+       height = 178,
+       units = "mm")
+
 ```
 
 ## For Virus

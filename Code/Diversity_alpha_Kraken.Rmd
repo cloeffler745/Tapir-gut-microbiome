@@ -16,6 +16,7 @@ library(lmtest) # anova() will give p-value
 library(ggtext)
 library(patchwork)
 library(lubridate)
+library(coin) # Wilcox_test() handles ties*
 ```
 
 # Set-up input and calculate alpha diversity measures for each data set
@@ -66,12 +67,13 @@ plot_mt_select <- function (data, variable, x.ax, legend.pos = "none") {
                       )) +
     theme(
       title = element_text(size = 12),
-      axis.title = element_text(size = 12), 
+      axis.title = element_text(size = 10), 
       axis.title.x = element_blank(),
       axis.text = element_text(size = 10),
       axis.text.x = element_blank(),
       legend.title = element_text(size = 12), 
       legend.text = element_text(size = 12), 
+      legend.margin = margin(-10, 0, 5, 0), #t,r,b,l
       legend.position = legend.pos,
       plot.title = element_markdown()
     ) + 
@@ -90,8 +92,9 @@ plot_mt_select <- function (data, variable, x.ax, legend.pos = "none") {
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(rich_bac ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(rich_bac ~ Specific_Group, 
+            data = metadata_mt_select,
+            distribution = "exact")
 
 # Create box plot
 p1 <-plot_mt_select(metadata_mt_select, "rich_bac", "Richness")
@@ -102,8 +105,9 @@ p1
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(shannon_bac ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(shannon_bac ~ Specific_Group, 
+            data = metadata_mt_select,
+            distribution = "exact")
 # Create box plot
 p2 <- plot_mt_select(metadata_mt_select, "shannon_bac", "Shannon", "bottom")
 p2
@@ -112,8 +116,9 @@ p2
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(simpson_bac ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(simpson_bac ~ Specific_Group, 
+            data = metadata_mt_select,
+            distribution = "exact")
 # Create box plot
 p3 <- plot_mt_select(metadata_mt_select, "simpson_bac", "Simpson")
 p3
@@ -148,8 +153,9 @@ p3
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(rich_arch ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(rich_arch ~ Specific_Group, 
+            data = metadata_mt_select, 
+            distribution = "exact")
 
 # Create box plot
 p4 <- plot_mt_select(metadata_mt_select, "rich_arch", "Richness")
@@ -160,8 +166,9 @@ p4
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(shannon_arch ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(shannon_arch ~ Specific_Group, 
+            data = metadata_mt_select, 
+            distribution = "exact")
 # Create box plot
 p5 <- plot_mt_select(metadata_mt_select, "shannon_arch", "Shannon", "bottom")
 p5
@@ -170,8 +177,9 @@ p5
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(simpson_arch ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(simpson_arch ~ Specific_Group, 
+            data = metadata_mt_select,
+            distribution = "exact")
 # Create box plot
 p6 <- plot_mt_select(metadata_mt_select, "simpson_arch", "Simpson")
 p6
@@ -207,8 +215,9 @@ p6
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(rich_fun ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(rich_fun ~ Specific_Group, 
+            data = metadata_mt_select, 
+            distribution = "exact")
 
 # Create box plot
 p7 <- plot_mt_select(metadata_mt_select, "rich_fun", "Richness")
@@ -219,8 +228,9 @@ p7
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(shannon_fun ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(shannon_fun ~ Specific_Group, 
+            data = metadata_mt_select, 
+            distribution = "exact")
 # Create box plot
 p8 <- plot_mt_select(metadata_mt_select, "shannon_fun", "Shannon", "bottom")
 p8
@@ -229,8 +239,9 @@ p8
 
 # Run statistical test
 # Are the medians different between wild and ex-situ?
-wilcox.test(simpson_fun ~ Specific_Group, 
-            data = metadata_mt_select)
+coin::wilcox_test(simpson_fun ~ Specific_Group, 
+            data = metadata_mt_select, 
+            distribution = "exact")
 # Create box plot
 p9 <- plot_mt_select(metadata_mt_select, "simpson_fun", "Simpson")
 p9
@@ -403,18 +414,18 @@ p18
         plot.title= element_markdown()) 
 
 
-# # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.tiff",
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.png",
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
+# Save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.tiff",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_9.png",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
 
 # The 3 panel figure
 ((p13 + ggtitle("Bacteria")) | (p14 + ggtitle("Archaea") + xlab("Date")) | (p15 + ggtitle("Fungi")) ) + 
@@ -427,16 +438,16 @@ p18
         axis.text.x = element_text(angle = 45, vjust = 0.5),
         panel.grid.minor = element_blank())
 
-# # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.tiff",
-#        width = 14,
-#        height = 5,
-#        units = "in")
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.png",
-#        width = 14,
-#        height = 5,
-#        units = "in")
+# Save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.tiff",
+       width = 14,
+       height = 5,
+       units = "in")
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Mountain_alpha_3_shannon.png",
+       width = 14,
+       height = 5,
+       units = "in")
 ```
 
 # Set up Dam-Calf data
@@ -562,7 +573,7 @@ p25
 # Archaea 
 p26 <- plot_Mal(data = meta_long, variable = "simpson_arch") + 
   ylab("") + 
-  xlab("Calf age (month of life)") + 
+  xlab("Calf age (months)") + 
   ggtitle("") + 
   ylim(0.7,1)
 p26
@@ -585,21 +596,21 @@ p27
         plot.title= element_markdown())  
 
 
-# # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.tiff", 
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.png", 
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
+# Save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.tiff",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_9.png",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
 
 # The panel we are actually going to use
-((p22 + ggtitle("Bacteria")) | (p23 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p24 + ggtitle("Fungi")) ) + 
+((p22 + ggtitle("Bacteria")) | (p23 + ggtitle("Archaea") + xlab("Calf age (months)")) | (p24 + ggtitle("Fungi")) ) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -607,16 +618,16 @@ p27
         legend.position = "right",
         plot.title= element_markdown()) 
 
-# # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.tiff", 
-#        width = 14,
-#        height = 5,
-#        units = "in")
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.png", 
-#        width = 14,
-#        height = 5,
-#        units = "in")
+# Save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.tiff",
+       width = 14,
+       height = 5,
+       units = "in")
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Malayan_alpha_3_shannon.png",
+       width = 14,
+       height = 5,
+       units = "in")
 ```
 
 # Lowland tapir calf -dam over time
@@ -718,7 +729,7 @@ p34
 # Archaea
 p35 <- plot_Low(data = meta_long, variable = "simpson_arch") + 
   ylab("") + 
-  xlab("Calf age (month of life)") + 
+  xlab("Calf age (months)") + 
   ggtitle("") + 
   ylim(0,1)
 p35
@@ -743,21 +754,21 @@ p36
 
 # # Save the plots
 # 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.tiff",
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.png",
-#        width = 1725,
-#        height = 894,
-#        units = "px",
-#        dpi = 96.14)
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.tiff",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_9.png",
+       width = 1725,
+       height = 894,
+       units = "px",
+       dpi = 96.14)
 
 
 # The panel we are actually going to use
-((p31 + ggtitle("Bacteria")) | (p32 + ggtitle("Archaea") + xlab("Calf age (month of life)")) | (p33 + ggtitle("Fungi")) ) + 
+((p31 + ggtitle("Bacteria")) | (p32 + ggtitle("Archaea") + xlab("Calf age (months)")) | (p33 + ggtitle("Fungi")) ) + 
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = "A", title = "") & 
   theme(plot.tag = element_text(size = 25, face = "bold"),
@@ -765,14 +776,14 @@ p36
         legend.position = "right",
         plot.title= element_markdown()) 
 
-# # Save the figure
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.tiff",
-#        width = 14,
-#        height = 5,
-#        units = "in")
-# 
-# ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.png",
-#        width = 14,
-#        height = 5,
-#        units = "in")
+# Save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.tiff",
+       width = 14,
+       height = 5,
+       units = "in")
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Lowland_alpha_3_shannon.png",
+       width = 14,
+       height = 5,
+       units = "in")
 ```

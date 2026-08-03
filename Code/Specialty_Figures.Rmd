@@ -155,7 +155,7 @@ sample_to_animal <- setNames(metadata$Sample_ID, metadata$Fastq_name)
 
 ```{r}
 # The graphs
-p1 <- ggplot(data_graph[data_graph$lineage %in% wild, ], 
+sp1 <- ggplot(data_graph[data_graph$lineage %in% wild, ], 
        aes(fill = variable, 
            y = value, 
            x = lineage)) + 
@@ -166,9 +166,9 @@ p1 <- ggplot(data_graph[data_graph$lineage %in% wild, ],
     labels = sample_to_animal[levels(data_graph$lineage)]) +
   theme(axis.text.x = element_text(angle = 90)) + 
   labs(title = "Wild mt. tapirs", y = "Proportion of Total Reads", x = "Sample")
-p1
+sp1
 
-p2 <- ggplot(data_graph[data_graph$lineage %in% Zoo1, ], 
+sp2 <- ggplot(data_graph[data_graph$lineage %in% Zoo1, ], 
        aes(fill = variable, 
            y = value, 
            x = lineage)) + 
@@ -177,9 +177,9 @@ p2 <- ggplot(data_graph[data_graph$lineage %in% Zoo1, ],
   scale_x_discrete(labels = sample_to_animal) +
   theme(axis.text.x = element_text(angle = 90)) + 
   labs(title = "Zoo1 mt. tapirs", y = "Proportion of Total Reads", x = "Sample") 
-p2
+sp2
 
-p3 <- ggplot(data_graph[data_graph$lineage %in% Zoo2, ], 
+sp3 <- ggplot(data_graph[data_graph$lineage %in% Zoo2, ], 
        aes(fill = variable, 
            y = value, 
            x = lineage)) + 
@@ -190,9 +190,9 @@ p3 <- ggplot(data_graph[data_graph$lineage %in% Zoo2, ],
     labels = sample_to_animal[levels(data_graph$lineage)]) +
   theme(axis.text.x = element_text(angle = 90)) + 
   labs(title = "Zoo2 mt. tapirs", y = "Proportion of Total Reads", x = "Sample") 
-p3
+sp3
 
-p4 <- ggplot(data_graph[data_graph$lineage %in% Zoo3, ], 
+sp4 <- ggplot(data_graph[data_graph$lineage %in% Zoo3, ], 
        aes(fill = variable, 
            y = value, 
            x = lineage)) + 
@@ -202,10 +202,10 @@ p4 <- ggplot(data_graph[data_graph$lineage %in% Zoo3, ],
     breaks = levels(data_graph$lineage),
     labels = sample_to_animal[levels(data_graph$lineage)]) +
   theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Malayan tapirs", y = "Proportion of Total Reads", x = "Sample") 
-p4
+  labs(title = "Zoo3 Malayan tapirs", y = "Proportion of Total Reads", x = "Sample") 
+sp4
 
-p5 <- ggplot(data_graph[data_graph$lineage %in% Zoo4, ], 
+sp5 <- ggplot(data_graph[data_graph$lineage %in% Zoo4, ], 
        aes(fill = variable, 
            y = value, 
            x = lineage)) + 
@@ -215,8 +215,8 @@ p5 <- ggplot(data_graph[data_graph$lineage %in% Zoo4, ],
     breaks = levels(data_graph$lineage),
     labels = sample_to_animal[levels(data_graph$lineage)]) +
   theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Lowland tapirs", y = "Proportion of Total Reads", x = "Sample") 
-p5
+  labs(title = "Zoo4 Lowland tapirs", y = "Proportion of Total Reads", x = "Sample") 
+sp5
 ```
 
 # Taxonomic alignment
@@ -295,7 +295,7 @@ Make the graphs
 
 ```{r}
 # Make the plots by group so I can actually see everything
-p6 <- ggplot(data_bar[data_bar$variable %in% wild, ], 
+sp6 <- ggplot(data_bar[data_bar$variable %in% wild, ], 
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
@@ -304,13 +304,13 @@ p6 <- ggplot(data_bar[data_bar$variable %in% wild, ],
   scale_x_discrete(
     breaks = levels(data_bar$variable),
     labels = sample_to_animal[levels(data_bar$variable)]) +
-  theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Wild mt. tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  theme(plot.title = element_blank(), axis.text.x = element_text(angle = 90)) + 
+  labs(y = "Proportion of Aligned Reads", x = "Sample") + 
   scale_fill_discrete(name = "Higher Taxa")
-p6
+sp6
 
 
-p7 <- ggplot(data_bar[data_bar$variable %in% Zoo1, ], 
+sp7 <- ggplot(data_bar[data_bar$variable %in% Zoo1, ], 
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
@@ -319,13 +319,13 @@ p7 <- ggplot(data_bar[data_bar$variable %in% Zoo1, ],
   scale_x_discrete(
     breaks = levels(data_bar$variable),
     labels = sample_to_animal[levels(data_bar$variable)]) +
-  theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Zoo1 mt. tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  theme(plot.title = element_blank(), axis.text.x = element_text(angle = 90)) + 
+  labs(y = "Proportion of Aligned Reads", x = "Sample") + 
   scale_fill_discrete(name = "Higher Taxa")
-p7
+sp7
 
 
-p8 <- ggplot(data_bar[data_bar$variable %in% Zoo2, ], 
+sp8 <- ggplot(data_bar[data_bar$variable %in% Zoo2, ], 
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
@@ -334,13 +334,13 @@ p8 <- ggplot(data_bar[data_bar$variable %in% Zoo2, ],
   scale_x_discrete(
     breaks = levels(data_bar$variable),
     labels = sample_to_animal[levels(data_bar$variable)]) +
-  theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Zoo2 mt. tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  theme(plot.title = element_blank(), axis.text.x = element_text(angle = 90)) + 
+  labs(y = "Proportion of Aligned Reads", x = "Sample") + 
   scale_fill_discrete(name = "Higher Taxa")
-p8
+sp8
 
 
-p9 <- ggplot(data_bar[data_bar$variable %in% Zoo3, ], 
+sp9 <- ggplot(data_bar[data_bar$variable %in% Zoo3, ], 
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
@@ -349,13 +349,13 @@ p9 <- ggplot(data_bar[data_bar$variable %in% Zoo3, ],
   scale_x_discrete(
     breaks = levels(data_bar$variable),
     labels = sample_to_animal[levels(data_bar$variable)]) +
-  theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Malayan tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  theme(plot.title = element_blank(), axis.text.x = element_text(angle = 90)) + 
+  labs(y = "Proportion of Aligned Reads", x = "Sample") + 
   scale_fill_discrete(name = "Higher Taxa")
-p9
+sp9
 
 
-p10 <- ggplot(data_bar[data_bar$variable %in% Zoo4, ], 
+sp10 <- ggplot(data_bar[data_bar$variable %in% Zoo4, ], 
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
@@ -364,76 +364,76 @@ p10 <- ggplot(data_bar[data_bar$variable %in% Zoo4, ],
   scale_x_discrete(
     breaks = levels(data_bar$variable),
     labels = sample_to_animal[levels(data_bar$variable)]) +
-  theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Lowland tapirs", y = "Proportion of Aligned Reads", x = "Sample") + 
+  theme(plot.title = element_blank(), axis.text.x = element_text(angle = 90)) + 
+  labs(y = "Proportion of Aligned Reads", x = "Sample") + 
   scale_fill_discrete(name = "Higher Taxa")
-p10
+sp10
 ```
 
 ## Make combined read % and higher taxa panels
 
 ```{r}
 # Supplemental Figure 1
-(p1 / p6) + plot_annotation(tag_levels = "A") & 
+(sp1 / sp6) + plot_annotation(tag_levels = "A") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.title= element_markdown()) 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig1.tiff", 
-       width=180, 
-       height=212.7, 
-       units = "mm")
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig1.png",
-       width=5.5, # 7.5
-       height=6.5) # 5
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig1.tiff", 
+#        width=180, 
+#        height=212.7, 
+#        units = "mm")
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig1.png",
+#        width=5.5, # 7.5
+#        height=6.5) # 5
 
 # Supplemental Figure 2
-(p2 / p7) + plot_annotation(tag_levels = "A") & 
+(sp2 / sp7) + plot_annotation(tag_levels = "A") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.title= element_markdown()) 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig2.tiff", 
-       width=6, 
-       height=6.5)
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig2.png", 
-       width=6, 
-       height=6.5) 
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig2.tiff", 
+#        width=6, 
+#        height=6.5)
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig2.png", 
+#        width=6, 
+#        height=6.5) 
 
 # Supplemental Figure 3
-(p3 / p8) + plot_annotation(tag_levels = "A") & 
+(sp3 / sp8) + plot_annotation(tag_levels = "A") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.title= element_markdown()) 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig3.tiff", 
-       width=5.5, 
-       height=6.5)
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig3.png", 
-       width=5.5, 
-       height=6.5)
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig3.tiff", 
+#        width=5.5, 
+#        height=6.5)
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig3.png", 
+#        width=5.5, 
+#        height=6.5)
 
 # Supplemental Figure 4
-(p4 / p9) + plot_annotation(tag_levels = "A") & 
+(sp4 / sp9) + plot_annotation(tag_levels = "A") & 
   theme(plot.tag = element_text(size = 20, face = "bold"), 
         plot.title= element_markdown()) 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig4.tiff", 
-       width=6, 
-       height=6.5)
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig4.png", 
-       width=6, 
-       height=6.5)
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig4.tiff", 
+#        width=6, 
+#        height=6.5)
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig4.png", 
+#        width=6, 
+#        height=6.5)
 
 # Supplemental Figure 5
-(p5 / p10) + plot_annotation(tag_levels = "A") & 
+(sp5 / sp10) + plot_annotation(tag_levels = "A") & 
   theme(plot.tag = element_text(size = 20, face = "bold"),
         plot.title= element_markdown()) 
 
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.tiff", 
-       width=6, # 11 
-       height=6.5) # 5
-ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.png", 
-       width=6, 
-       height=6.5,
-       units = "in")
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.tiff", 
+#        width=6, # 11 
+#        height=6.5) # 5
+# ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.png", 
+#        width=6, 
+#        height=6.5,
+#        units = "in")
 ```
 
 # Archaeal Wild versus *Ex-situ*
@@ -442,7 +442,11 @@ ggsave(file = "../Images/Manuscript (Frontiers)/Sup_Fig5.png",
 library(reshape2)
 
 Mas_data <- abund_arch_mt_select %>%
-  select(any_of(microbes_pass_filter))
+  select(any_of(microbes_pass_filter)) %>% 
+  rownames_to_column(var = "Fastq_name") %>% 
+  left_join(., metadata_mt_select[,1:2], by = "Fastq_name") %>% 
+  select(-Fastq_name) %>% 
+  column_to_rownames(var = "Animal_Code")
 
 
 # GENUS 
@@ -460,12 +464,13 @@ graph_me <- Mas_data %>%
 
 graph_me$lineage <- as.factor(graph_me$X)
 graph_me <- melt(graph_me[,2:ncol(graph_me)], id.vars = "lineage") %>% 
-  mutate(variable = factor(variable, levels = c("1_S1", "10_S5", "2_S2", "6_S3", "87_S105", 
-                                                "9_S4", "19_S12", "31_S23", "33_S25",
-                                                "35_S27", "37_S29", "48_S40", "49_S41")))
+  mutate(variable = factor(variable, levels = c("WMT1", "WMT2", "WMT3", "WMT4", 
+                                                "WMT5", "WMT6", "ZMT1", "ZMT2", 
+                                                "ZMT3", "ZMT4", "ZMT5", "ZMT6", 
+                                                "ZMT7")))
   
 # Make the bar plot
-ggplot(graph_me, 
+genus_plot <- ggplot(graph_me, 
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
@@ -478,6 +483,7 @@ ggplot(graph_me,
   ylab("Proportion of Archaeome") + 
   guides(fill = guide_legend(title="Genus"))
 
+genus_plot
 
 # SPECIES WITH THE RED BOXES around genera----------------------------------------------
 
@@ -491,9 +497,10 @@ graph_me <- Mas_data %>%
 # 1. Add genus info to your plotting data fram
 graph_me$lineage <- as.factor(graph_me$X)
 graph_me <- melt(graph_me[,2:ncol(graph_me)], id.vars = "lineage") %>% 
-  mutate(variable = factor(variable, levels = c("1_S1", "10_S5", "2_S2", "6_S3", "87_S105", 
-                                                "9_S4", "19_S12", "31_S23", "33_S25",
-                                                "35_S27", "37_S29", "48_S40", "49_S41")))
+  mutate(variable = factor(variable, levels = c("WMT1", "WMT2", "WMT3", "WMT4", 
+                                                "WMT5", "WMT6", "ZMT1", "ZMT2", 
+                                                "ZMT3", "ZMT4", "ZMT5", "ZMT6", 
+                                                "ZMT7")))
 
 graph_me <- graph_me %>%
   left_join(lineage_table %>% select(Species, Genus), by = c("lineage" = "Species"))
@@ -523,10 +530,10 @@ genus_boxes <- stacked %>%
   )
 
 # 5. Plot
-ggplot(graph_me, 
-       aes(fill = lineage, 
-           y = value, 
-           x = variable)) + 
+species_plot <- ggplot(graph_me, 
+                       aes(fill = lineage, 
+                           y = value, 
+                           x = variable)) + 
   geom_bar(position = "fill", 
            stat = "identity", 
            color = "black") + 
@@ -535,9 +542,41 @@ ggplot(graph_me,
             inherit.aes = FALSE,
             color = "white", fill = NA, linewidth = 0.8) +
   theme(axis.text.x = element_text(angle = 90), 
-        legend.position = "right") + 
+        legend.position = "right",
+        legend.text = element_text(size = 8),
+        legend.margin = margin(0, -5, 0, 0),
+        legend.spacing.x = unit(0.05, "cm"),
+        legend.key.width = unit(0.3, "cm")) + 
   xlab("Samples") + 
   ylab("Proportion of Archaeome") + 
-  guides(fill = guide_legend(title = "Species"))
+  guides(fill = guide_legend(title = "Archaeal Species"))
 
+species_plot
+
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Supp_fig_archaea_select_mt_speciesOnly.png", 
+       units = "mm", 
+       width = 180)
+
+
+# Make the big figure
+(genus_plot / species_plot) + plot_annotation(tag_levels = "A", 
+                             title = "") & 
+  theme(plot.tag = element_text(size = 12, face = "bold"),
+        plot.tag.position = c(0.02, 1.02), 
+        plot.title= element_markdown(),
+        axis.title = element_text(size = 10), 
+        axis.text = element_text(size = 10), 
+        legend.title = element_text(size = 10), 
+        legend.text = element_text(size = 8),
+        legend.position = "right",
+        legend.margin = margin(0, -5, 0, 0),
+        legend.spacing.x = unit(0.05, "cm"),
+        legend.key.width = unit(0.3, "cm")) 
+
+
+# save the figure
+ggsave(file = "../Images/Manuscript (Frontiers)/All MT samples Experimental separation rarefaction/Supp_fig_archaea_select_mt.png", 
+       units = "mm", 
+       width = 180, 
+       height = 180)
 ```
