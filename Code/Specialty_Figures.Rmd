@@ -478,7 +478,7 @@ Mal_calf <- ggplot(data_bar_Mal,
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
-  geom_bar(position="stack", stat="identity", color = "black") +
+  geom_bar(position="stack", stat="identity", color = "black", linewidth = 0.3) +
   scale_y_continuous() + 
   scale_x_discrete(
     labels = sample_to_months[levels(data_bar_Mal$variable)]
@@ -507,7 +507,7 @@ Mal_dam <- ggplot(data_bar_Mal_mom,
        aes(fill = lineage, 
            y = value, 
            x = variable)) + 
-  geom_bar(position="stack", stat="identity", color = "black") +
+  geom_bar(position="stack", stat="identity", color = "black", linewidth = 0.3) +
   scale_y_continuous() + 
   scale_x_discrete(
     labels = c("MaTD_0" = "Dam",
@@ -579,7 +579,7 @@ low_calf
 ```{r}
 #Grab first mom sample
 # Reshape data so I can graph with it
-data_long <- data_graph %>% select(X, LTD_1)
+data_long <- data_graph %>% select(X, LTD_0)
 data_long$lineage <- as.factor(data_graph$X)
 data_long <- melt(data_long[,2:ncol(data_long)], id.vars = "lineage")
 data_bar_low_mom <- data_long %>% 
@@ -596,7 +596,7 @@ low_dam <- ggplot(data_bar_low_mom,
   geom_bar(position="stack", stat="identity", color = "black", linewidth = 0.3) +
   scale_y_continuous() + 
   scale_x_discrete(
-    labels = c("LTD_1" = "Dam")
+    labels = c("LTD_0" = "Dam")
   ) +
   theme(axis.text.x = element_text(angle = 90)) + 
   labs(title = element_blank(), y = element_blank(), x = element_blank()) + 
