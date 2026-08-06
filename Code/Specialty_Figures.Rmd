@@ -164,8 +164,9 @@ sp1 <- ggplot(data_graph[data_graph$lineage %in% wild, ],
   scale_x_discrete(
     breaks = levels(data_graph$lineage),
     labels = sample_to_animal[levels(data_graph$lineage)]) +
-  theme(axis.text.x = element_text(angle = 90)) + 
-  labs(title = "Wild mt. tapirs", y = "Proportion of Total Reads", x = "Sample")
+  theme(axis.text.x = element_text(angle = 90), 
+        plot.title = element_markdown()) + 
+  labs(title = "*In-situ* mt. tapirs", y = "Proportion of Total Reads", x = "Sample")
 sp1
 
 sp2 <- ggplot(data_graph[data_graph$lineage %in% Zoo1, ], 

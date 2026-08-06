@@ -13,7 +13,7 @@ library(hilldiv) # tss()
 
 ```{r}
 # Graph and save volcano plot
-volcano_plot <- function(maaslin_file, output_path, output_name, cutoff = 0.05, Plot_title = "Wild v. *ex-situ*", chosen = c()) {
+volcano_plot <- function(maaslin_file, output_path, output_name, cutoff = 0.05, Plot_title = "*In-situ* v. *ex-situ*", chosen = c()) {
   
   # Load the data
   taxa <- vroom(maaslin_file, altrep = FALSE)
@@ -147,12 +147,12 @@ Maaslin2(Mas_data,
          reference = c('Group,Wild'))
 ```
 
-### Make and save the volcano plots
+### Make volcano plots
 
 ```{r}
 volc_bac <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_results.tsv", 
              "../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria",
-             "Bacteria_only", Plot_title = "Wild v. *ex-situ* (Bacteria)",
+             "Bacteria_only", Plot_title = "*In-situ* v. *ex-situ* (Bacteria)",
              chosen = c("Ruminococcus.albus", "Treponema.bryantii", "Treponema.ruminis",
                         "Fibrobacter.succinogenes", "Ruminococcus.champanellensis", 
                         "Escherichia.coli", "Butyricimonas.virosa", 
@@ -163,7 +163,7 @@ volc_bac <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/B
 # For presentation
 volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Bacteria/all_results.tsv", 
              "../Images/Marcos",
-             "Volc_Bacteria", Plot_title = "Wild v. *ex-situ* (Bacteria)",
+             "Volc_Bacteria", Plot_title = "*In-situ* v. *ex-situ* (Bacteria)",
              chosen = c("Vibrio.parahaemolyticus","Shigella.flexneri", 
                         "Escherichia.coli","Fibrobacter.succinogenes",
                         "Corynebacterium.kefirresidentii",
@@ -197,10 +197,10 @@ EEEEEFFFFFFF"
 
 
 
-# ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_bac_Div_Diff_panel.svg",
-#        width = 180,
-#        height = 178,
-#        units = "mm")
+ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_bac_Div_Diff_panel.svg",
+       width = 180,
+       height = 178,
+       units = "mm")
 
 ```
 
@@ -231,7 +231,7 @@ Maaslin2(Mas_data,
 ```{r}
 volc_arch <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_results.tsv",
              "../Data/Maaslin2_outs_rare/No rare select min detect/MountainWvC/Archaea",
-             "Archaea_only", Plot_title = "Wild v. *ex-situ* (Archaea)",
+             "Archaea_only", Plot_title = "*In-situ* v. *ex-situ* (Archaea)",
              chosen = c("Methanobrevibacter.ruminantium", "Methanobrevibacter.smithii",
                         "Methanoculleus.chikugoensis", "Methanocorpusculum.labreanum",
                         "Methanoculleus.bourgensis", "Methanobrevibacter.intestini", 
@@ -242,7 +242,7 @@ volc_arch <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/
 # For presentation
 volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Archaea/all_results.tsv",
              "../Images/Marcos",
-             "Volc_Archaea", Plot_title = "Wild v. *ex-situ* (Archaea)",
+             "Volc_Archaea", Plot_title = "*In-situ* v. *ex-situ* (Archaea)",
              chosen = c("Methanogenium.sp..S4BF","Methanoculleus.bourgensis",
                         "Methanobrevibacter.smithii","Methanobrevibacter.intestini",
                         "Methanobrevibacter.olleyae","Methanobrevibacter.ruminantium",
@@ -274,7 +274,7 @@ EEEEEFFFFFFF"
         legend.title = element_blank(), 
         legend.key.spacing = unit(0.1, "cm")) 
 
-ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_arch_Div_Diff_panel.svg", 
+ggsave(filename = "../Images/Manuscript (Frontiers)/rare min detect/WvE_arch_Div_Diff_panel.svg",
        width = 180,
        height = 178,
        units = "mm")
@@ -306,7 +306,7 @@ Maaslin2(Mas_data,
 ```{r}
 volc_fun <- volcano_plot("../Data/Maaslin2_outs_rare/No rare select min detect/Fungi/all_results.tsv", 
              "../Data/Maaslin2_outs_rare/No rare select min detect/Fungi",
-             "Fungi_only", Plot_title = "Wild v. *ex-situ* (Fungi)")
+             "Fungi_only", Plot_title = "*In-situ* v. *ex-situ* (Fungi)")
 volc_fun
 ```
 

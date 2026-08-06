@@ -62,7 +62,7 @@ plot_mt_select <- function (data, variable, x.ax, legend.pos = "none") {
     scale_fill_manual(name = "Group", values = mt_select_col,
                       breaks = c("Wild", "Ex-situ"),
                       labels = c(
-                        "Wild" = "Wild",
+                        "Wild" = expression(italic("In-situ")),
                         "Ex-situ" = expression(italic("Ex-situ"))
                       )) +
     theme(

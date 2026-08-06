@@ -79,7 +79,7 @@ plot_beta_mt_select <- function(data, title, variance, legend.pos = "none") {
         "Ex-situ" = "#A6A6A6"
       ),
       labels = c(
-        "Wild" = "Wild",
+        "Wild" = expression(italic("In-situ")),
         "Ex-situ" = expression(italic("Ex-situ")))) + 
     theme_bw() +
     theme(title = element_text(size = 10),
