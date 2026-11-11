@@ -691,7 +691,28 @@ p_heat <- ggplot(data_plot, aes(x = lineage, y = variable, fill = value)) +
   ) +
 
   theme_minimal() +
-  scale_x_discrete(labels = function(x) sub(".*_", "", x)) +
+  scale_x_discrete(
+  labels = function(x) {
+    x <- sub(".*_", "", x)                      # your existing cleanup
+
+    # special case: yojI label
+    x[grepl("yojI", x)] <- "YojI"
+
+    # build plotmath expressions for each label
+    lapply(x, function(lab) {
+      if (grepl("Escherichia coli", lab)) {
+        rest <- trimws(sub("Escherichia coli", "", lab))
+        if (nchar(rest) > 0) {
+          bquote(italic("E. coli") ~ .(rest))
+        } else {
+          bquote(italic("E. coli"))
+        }
+      } else {
+        lab
+      }
+    })
+  }
+) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         panel.grid = element_blank()) +
   labs(x = NULL, y = NULL)
@@ -918,13 +939,27 @@ venn_panel <- wrap_elements(full = grobTree(venn3))
 ```{r}
 library(patchwork)
 
-design <- "AAAAAA
-AAAAAA
-BBBCCC
-DDEEFF"
+design <- "AAAAAAAAAAAA
+AAAAAAAAAAAA
+BBBBBBBBBBBB
+CCCCDDDDEEEE"
+
+row2 <- (p_arg_rich + guide_area() + p_total) +
+  plot_layout(guides = "collect", widths = c(1, 0.2, 1)) & 
+  theme(legend.text = element_text(size = 8, margin = margin(b = 2)),
+        legend.title = element_blank(),
+        legend.key.spacing = unit(0.1, "cm")) 
+
+#row2_wrapped <- wrap_elements(full = row2)
+
+p_heat_wrapped <- wrap_elements(
+  full = p_heat +
+    theme(legend.text = element_text(size = 8, margin = margin(b = 2)),
+          legend.title = element_blank(),
+          legend.key.spacing = unit(0.1, "cm")))
 
 
-(p_heat + p_arg_rich + p_total + plot_Group_Jac + venn_panel + plot_Group_BC) + 
+(p_heat_wrapped + row2 + plot_Group_Jac + venn_panel + plot_Group_BC ) + 
   plot_layout(design = design) + 
   plot_annotation(tag_levels = "A", 
                              title = "") & 
@@ -933,10 +968,17 @@ DDEEFF"
         plot.title= element_markdown(),
         legend.text = element_text(size = 8, margin = margin(b = 2)), 
         legend.title = element_blank(), 
-        legend.key.spacing = unit(0.1, "cm"))
+        legend.key.spacing = unit(0.1, "cm"),
+        aspect.ratio = NULL)
 
-ggsave(file = "../Data/ARG_OAP_outs/Big_fig.svg", 
-       dpi = 1200, 
+# To check what is where
+        # plot.background   = element_rect(fill = "lightblue"),
+        # panel.background  = element_rect(fill = "pink"),
+        # legend.background = element_rect(fill = "yellow"),
+        # legend.box.background = element_rect(fill = "orange")
+
+ggsave(file = "../Data/ARG_OAP_outs/Big_fig.svg",
+       dpi = 1200,
        width = 180,
        height = 178,
        units = "mm")
